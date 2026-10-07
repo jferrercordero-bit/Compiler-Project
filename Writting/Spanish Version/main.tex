@@ -21,6 +21,8 @@
 \usepackage{booktabs}
 \usepackage[table]{xcolor}
 \usepackage{tabularx}
+\usepackage{threeparttable} % Para notas de tabla
+\newcounter{notaid}
 
 
 \definecolor{tableheader}{RGB}{238, 237, 232} % Color beige del encabezado
@@ -103,9 +105,6 @@
 
     \vfill
 
-    % --- LOCATION & DATE ---
-    {\large \textbf{Mexico City, \today}}
-
 \end{titlepage}
 
 \newpage
@@ -118,10 +117,14 @@
 %=====================================================================
 \section{Introducción}
 
-En este documento se presentan las decisiones de modelado utilizadas para definir el comportamiento del analizador léxico, así como los elementos que posteriormente servirán como base para su implementación.
+Todo proceso de compilación tiene en esencia tres elementos; En primer lugar, el proceso de análisis léxico, sintáctico y semántico constituye el primer punto de contacto con el código fuente; el segundo elemento es una tabla de símbolos útil para la organización de todos los identificadores de un código fuente; el tercer es una fase de síntesis, en ella se genera un código intermedio para la ejecución final del programa.
 
-\textbf{Qué se hizo.} Una definición regular por cada clase de token y por cada elemento que se descarta.
+Bajo la premisa anterior, este trabajo presenta el desarrollo del primer elemento de un compilador específicamente de la creación de un Analizador Léxico. Su objetivo fundamental consiste en transformar una secuencia continua de caracteres de entrada en una serie de unidades con significado sintáctico denominadas tokens, al mismo tiempo que descarta elementos no significativos como espacios en blanco y comentarios.
 
+El resultado del proyecto es un Analizador Léxico capaz de generar una salida de tokens para validar una cadena de caracteres. Además, este analizador considera una lista de 45 tokens representativos para las palabras reservadas, identificadores, constantes de distintos tipos, literales de cadena, operadores y delimitadores de puntuación.
+
+\subsection{Expresiones regulares}
+A continuación se presenta la definición formal de la expresión regular por cada clase de token y por cada elemento descartable.
 \begin{align*}
 \text{letra} &\rightarrow [\text{a-zA-Z}] \\
 \text{digito} &\rightarrow [0\text{-}9] \\
@@ -134,14 +137,14 @@ En este documento se presentan las decisiones de modelado utilizadas para defini
 \text{booleano} &\rightarrow \text{true} \mid \text{false} \quad \text{(se reconoce como identificador y se busca en la tabla)} \\
 \text{constante} &\rightarrow \text{entero} \mid \text{decimal} \mid \text{caracter} \mid \text{booleano} \\
 \text{literal} &\rightarrow \text{\textquotedbl}\ (\text{cualquier carácter excepto \textquotedbl, } \backslash \text{ y salto de línea} \mid \text{escape})^*\ \text{\textquotedbl} \\
-\text{operador} &\rightarrow + \mid - \mid * \mid / \mid \% \mid = \mid == \mid ! \mid != \mid < \mid <= \mid > \mid >= \mid \& \mid \&\& \mid \text{\textquotedbl}\!\mid\!\text{\textquotedbl} \mid \text{\textquotedbl}\!\mid\!\mid\!\text{\textquotedbl} \\
+\text{operador} &\rightarrow + \mid - \mid * \mid / \mid \% \mid = \mid == \mid ! \mid != \mid < \mid <= \mid > \mid >= \mid \& \mid \&\& \mid \text{\textbar} \mid \text{\textbar\textbar} \\
 \text{puntuacion} &\rightarrow ( \mid ) \mid \{ \mid \} \mid [ \mid ] \mid ; \mid , \\
 \text{especial} &\rightarrow \# \mid . \\
 \text{blanco} &\rightarrow (\text{espacio} \mid \backslash\text{t} \mid \backslash\text{r} \mid \backslash\text{n})^+ \quad \text{se descarta} \\
 \text{comentario} &\rightarrow // \ (\text{cualquier carácter excepto salto de línea})^* \\
 &\quad \mid /* \ ([\hat{\ }*] \mid *^+ [\hat{\ }*/])^* \ *^+ / \quad \text{se descarta}
 \end{align*}
-
+\newpage
 Para los identificadores se consideró que el primer carácter puede ser una letra o guion bajo, mientras que los siguientes pueden incluir letras, dígitos o guion bajo. El decimal exige al menos un dígito después del punto, así que "5." no es una constante completa.
 
 Los signos + y - no se consideran parte de las constantes numéricas, sino operadores independientes. De esta manera, una expresión como a-1 se reconoce como un identificador, un operador de resta y una constante entera.
@@ -169,6 +172,7 @@ A continuación se presenta una lista de 45 tokens agrupados en Palabra reservad
 \midrule
 \endhead
 \bottomrule
+\multicolumn{4}{c}{\vspace{2pt}\footnotesize \textbf{Tabla \thetable:} Definición formal de cada token.} \\
 \endfoot
 1  & \cd{INT}         & keyword     & \cd{int} \\
 2  & \cd{FLOAT}       & keyword     & \cd{float} \\
@@ -181,7 +185,7 @@ A continuación se presenta una lista de 45 tokens agrupados en Palabra reservad
 9  & \cd{WHILE}       & keyword     & \cd{while} \\
 10 & \cd{FOR}         & keyword     & \cd{for} \\
 11 & \cd{PRINT}       & keyword     & \cd{print} \\
-12 & \cd{ID}          & identifier  & \cd{letra} \\ 
+12 & \cd{ID}          & identifier  & \cd{(letra \textbar\ \_)(letra \textbar\ dígito \textbar\ \_)*} \\
 13 & \cd{INT\_CONST}  & constant    & \cd{uno o más digitos} \\
 14 & \cd{FLOAT\_CONST}& constant    & dígitos, punto, dígitos \\
 15 & \cd{CHAR\_CONST} & constant    & un carácter o un escape entre comillas simples \\
@@ -216,11 +220,14 @@ A continuación se presenta una lista de 45 tokens agrupados en Palabra reservad
 44 & \cd{HASH}        & special     & \cd{\#} \\
 45 & \cd{DOT}         & special     & \cd{.} \\
 \end{longtable}
+
+
+
 \end{center}
 
 %=====================================================================
 \subsection{Prioridad de reconocimiento}
-La prioridad de los Tokens, cuando se reconoce más de un padrón a la entrada, se determinó a partir de las siguientes cinco reglas.
+La prioridad de los Tokens, cuando se reconoce más de un patrón a la entrada, se determinó a partir de las siguientes cinco reglas.
 
 \begin{enumerate}
     \item \textbf{Máximo bocado.} Toma el lexema más largo que termine en un estado final.
@@ -230,19 +237,20 @@ La prioridad de los Tokens, cuando se reconoce más de un padrón a la entrada, 
     \item \textbf{Sin estado final no hay token.} Si ningún prefijo llega a un estado final, se reporta un error léxico; no existe un token por defecto.
 \end{enumerate}
 
-El máximo bocado es el primero porque toma la decisón en la mayoría de los casos y \textbf{nunca entra en conflicto con las otras reglas}. La tabla va después porque solo actúa cuando el lexema ya terminó en $q_1$. Con estas reglas se resuelven los casos de ambigüedad considerados en el lenguaje definido para la práctica.
+El máximo bocado es el primero porque toma la decisión en la mayoría de los casos y \textbf{nunca entra en conflicto con las otras reglas}. La tabla va después porque solo actúa cuando el lexema ya terminó en $q_1$. Con estas reglas se resuelven los casos de ambigüedad considerados en el lenguaje definido para la práctica.
 
  La regla cuatro se presenta en el AFD. Si \cd{/* ...} llega al final sin cerrarse, el último estado final visitado es $q_8$; sin la excepción, el escáner retrocedería y reportaría un operador \cd{/} en vez del error real.
 
 %=====================================================================
+\newpage
 \section{AFND}
 
-El siguiente autómata fue realizado en colaboración con los compañeros de clase durante una de de las sesiones teóricas de la materia. Este sirve como base teórica para la construcción del autómata correspondiente a analizador léxico de este proyecto.
+El siguiente autómata fue realizado en colaboración con los compañeros de clase durante una de las sesiones teóricas de la materia. Este sirve como base teórica para la construcción del autómata correspondiente a analizador léxico de este proyecto.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.95\textwidth]{afnd-ejemplo.png}
-    \caption{AFD realizado en sesiones teóricas.}
+    \caption{AFND realizado en sesiones teóricas.}
 \end{figure}
 
 \begin{flushleft}
@@ -259,7 +267,7 @@ $(^{*} = \text{estado final})$
 
 \subsection{AFND. Lexical Analyzer}
 
-Cada definición regular de la sección 1 se tradujo a un sub-autómata, es decir, un estado por cada punto del patrón donde se espera un tipo distinto de carácter, y un estado final donde el patrón puede terminar. Después, S se unió a los nueve estados iniciales del autómata de la sección anterior con movimientos $\varepsilon$.
+Cada definición regular de la sección anterior se tradujo a un sub-autómata, es decir, un estado por cada punto del patrón donde se espera un tipo distinto de carácter, y un estado final donde el patrón puede terminar. Después, S se unió a los nueve estados iniciales del autómata de la sección anterior con movimientos $\varepsilon$.
 
 \vspace{0.3cm}
 
@@ -298,6 +306,9 @@ Especial & $X_0 \xrightarrow{\,\#\, .\,} X_1^*$ & $X_1$: carácter especial \\
 
 Blanco & $W_0 \xrightarrow{\,\text{WS, NL}\,} W_1^*$ \quad $W_1 \xrightarrow{\,\text{WS, NL}\,} W_1^*$ & $W_1$: blanco (se descarta) \\
 \bottomrule
+
+% --- NOTA DE TABLA CENTRADA CON CONTADOR ---
+\multicolumn{3}{c}{\vspace{2pt}\footnotesize \textbf{Tabla 2.} Transiciones y estados finales por cada sub-autómata del Lexer.} \\
 \end{tabularx}
 }
 
@@ -351,6 +362,7 @@ $Q_3$ & $\{G, H\}$ & -- & -- & -- & $Q_3$ & -- & entero \\
 $Q_4$ & $\{G\}$ & -- & -- & -- & $Q_3$ & -- & no \\
 $Q_5$ & $\{C, E\}$ & $Q_2$ & $Q_2$ & $Q_2$ & $Q_2$ & -- & \cd{if} (prioridad sobre identificador) \\
 \bottomrule
+\multicolumn{8}{c}{\vspace{2pt}\footnotesize \textbf{Tabla 3.} Transiciones de estados para el ejemplo de conversión.} \\
 \end{tabularx}
 \end{center}
 
@@ -380,6 +392,7 @@ $q_{10}$ & $\{C_3\}$ & $q_{23}$ & $\{K_2\}$ \\
 $q_{11}$ & $\{C_4\}$ & $q_{24}$ & $\{K_4\}$ \\
 $q_{12}$ & $\{O_2\}$ & & \\
 \bottomrule
+\multicolumn{4}{c}{\vspace{2pt}\footnotesize \textbf{Tabla 4.} Correspondencia de estados entre el AFND completo y el AFD resultante.} \\
 \end{tabular}
 \end{center}
 
@@ -416,9 +429,10 @@ Dos caracteres van en la misma columna si se comportan igual en todos los estado
 \cd{EQ}     & \cd{=}                        &            & \\
 \cd{REL}    & \cd{! < >}                    &            & \\
 \bottomrule
+\multicolumn{4}{c}{\vspace{2pt}\footnotesize \textbf{Tabla 5.} Agrupación de los caracteres ASCII en clases de equivalencia para el AFD.} \\
 \end{tabular}
 \end{center}
-
+\newpage
 \textbf{Tabla de transiciones} $\delta(\text{estado}, \text{clase})$; un guion significa que no hay movimiento:
 
 \begin{table}[H]
@@ -454,8 +468,8 @@ $q_{22}$ & $q_{23}$ & $q_{23}$ & $q_{23}$ & $q_{23}$ & $q_{23}$ & $q_{23}$ & $q_
 $q_{23}$ & -- & -- & -- & -- & $q_{24}$ & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- \\
 $q_{24}$ & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- \\
 \bottomrule
+\multicolumn{19}{c}{\vspace{2pt}\footnotesize \textbf{Tabla 6.} Transiciones del AFD (25 estados $\times$ 18 clases).} \\
 \end{tabular}}
-\caption{Tabla de transiciones del AFD (25 estados $\times$ 18 clases)}
 \end{table}
 
 \textbf{Estados finales} ($q_0$, $q_3$, $q_5$, $q_{10}$, $q_{11}$ y $q_{20}$ a $q_{23}$ no son finales):
@@ -477,6 +491,7 @@ $q_{17}$ & \cd{\# .} & \cd{HASH} o \cd{DOT} \\
 $q_9, q_{18}$ & \cd{// ...}, \cd{/* ... */} & comentario, se descarta \\
 $q_{19}$ & espacios, tabuladores, saltos de línea & espacio en blanco, se descarta \\
 \bottomrule
+\multicolumn{3}{c}{\vspace{2pt}\footnotesize \textbf{Tabla 7.} Mapeo de estados finales del AFD a sus respectivos tipos de token y lexemas.} \\
 \end{tabularx}
 \end{center}
 
@@ -488,28 +503,31 @@ Un error léxico ocurre cuando el escaneo se detiene sin haber pasado por un est
 \footnotesize
 \begin{tabularx}{\textwidth}{@{}p{2.4cm} p{3.6cm} p{4.3cm} X@{}}
 \toprule
-\textbf{Estado donde se atora} & \textbf{Qué significa} & \textbf{Mensaje} & \textbf{Recuperación} \\
+\textbf{Estado de confusión} & \textbf{Qué significa} & \textbf{Mensaje} & \textbf{Recuperación} \\
 \midrule
 $q_0$ & carácter que no inicia ningún token, como \cd{@} o \cd{\textbackslash} & \cd{Lexical error 1:5: unexpected character \textquotesingle @\textquotesingle} & saltar ese carácter \\
 $q_5$ o $q_{20}$ & cadena sin cerrar en la misma línea & \cd{Lexical error 2:8: unterminated string literal} & saltar al final de la línea \\
 $q_{21}$, $q_{22}$ o $q_{23}$ & constante de carácter mal formada: \cd{\textquotesingle\textquotesingle}, \cd{\textquotesingle ab\textquotesingle} o sin cerrar & \cd{Lexical error 3:10: malformed character constant} & saltar hasta la siguiente \cd{\textquotesingle} de la línea, o al final de la línea \\
 $q_{10}$ o $q_{11}$, al final de la entrada & comentario de bloque sin cerrar (regla 4) & \cd{Lexical error 4:1: unterminated comment} & dejar de escanear \\
 \bottomrule
+\multicolumn{4}{c}{\vspace{2pt}\footnotesize \textbf{Tabla 8.} Manejo de errores léxicos.} \\
 \end{tabularx}
 \end{center}
 
 En $q_3$ no hay error: \cd{5.} siempre tiene antes el estado final $q_2$, así que se emite \cd{5} y se vuelve a escanear desde \cd{.}. La recuperación del carácter salta hasta la siguiente comilla para que \cd{\textquotesingle ab\textquotesingle} no se convierta en un identificador falso más otro error.
 
 %=====================================================================
+\newpage
 \section{Diagramas del proceso del lexer}
 El diagrama de flujo muestra cómo los errores y los elementos descartados regresan al inicio del ciclo sin agregar tokens. La ejecución del Lexer se realiza en 5 etapas mostradas en el siguiente gráfico.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.85\textwidth]{etapas.png}
-    \caption{Etapas del lexer · 5 etapas}
+    \caption{Etapas del lexer}
 \end{figure}
 
+\newpage
 \subsection{Ciclo de escaneo}
 
 En la siguiente imagen se muestra un diagrama de flujo del proceso scan del Lexer.
@@ -544,9 +562,97 @@ while pos < len(text):
 \end{lstlisting}
 
 %=====================================================================
+\section{Pruebas del analizador léxico}
+
+Las pruebas se ejecutaron con el analizador desde la línea de comandos mediante \cd{python main.py --text "..."}. La salida tiene tres partes: una línea con la clase de cada token en orden, una línea \cd{Clase: lexema} por token y el total de tokens (\cd{Total of tokens: N}). Los errores léxicos se imprimen al final con el formato \cd{Lexical error línea:columna: mensaje} y no se cuentan como tokens. Los comentarios y los espacios se descartan, por lo que no aparecen en la salida. Las comillas dobles internas se escriben con \cd{\textbackslash"} porque la cadena va entre comillas en la consola.
+
+\subsection{T1. Caso correcto: declaración, cadenas y operador}
+
+Entrada con una declaración, dos llamadas con cadenas y el operador \cd{\&}:
+
+\begin{lstlisting}
+unam.fi.compilers.g5.06>python main.py --text "int number; printf(\"Enter a number:\");  scanf(\"%d\", &number); "
+keyword identifier punctuation identifier punctuation literal punctuation punctuation identifier punctuation literal punctuation operator identifier punctuation punctuation
+Keyword: int
+Identifier: number
+Punctuation: ;
+Identifier: printf
+Punctuation: (
+Literal: "Enter a number:"
+Punctuation: )
+Punctuation: ;
+Identifier: scanf
+Punctuation: (
+Literal: "%d"
+Punctuation: ,
+Operator: &
+Identifier: number
+Punctuation: )
+Punctuation: ;
+Total of tokens: 16
+\end{lstlisting}
+
+Se observa que \cd{int} sale como palabra reservada y \cd{number} como identificador (regla 2). Con \cd{printf} funciona el máximo bocado (regla 1): aunque \cd{print} es palabra reservada, el lexema más largo que termina en $q_1$ es \cd{printf}, que no está en la tabla de búsqueda y se clasifica como \cd{ID}. Las cadenas \cd{"Enter a number:"} y \cd{"\%d"} terminan en $q_6$ y se emiten completas, con sus comillas. El \cd{\&} aislado termina en $q_{14}$ y es un operador de un carácter, porque no le sigue otro \cd{\&}.
+
+\subsection{T2. Comentarios, decimales y palabras reservadas}
+
+Entrada con un decimal, un comentario de bloque, una cadena y un comentario de línea:
+
+\begin{lstlisting}
+unam.fi.compilers.g5.06>python main.py --text "float x = 3.14; /* bloque */ print(\"Hola\"); // fin"
+keyword identifier operator constant punctuation keyword punctuation literal punctuation punctuation
+Keyword: float
+Identifier: x
+Operator: =
+Constant: 3.14
+Punctuation: ;
+Keyword: print
+Punctuation: (
+Literal: "Hola"
+Punctuation: )
+Punctuation: ;
+Total of tokens: 10
+\end{lstlisting}
+
+El comentario de bloque (termina en $q_{18}$), el de línea (termina en $q_9$) y los espacios ($q_{19}$) se reconocen con las mismas reglas que los tokens, pero se descartan, así que no aparecen en la salida. El decimal \cd{3.14} termina en $q_4$ y se emite como constante.
+
+\subsection{T3. Caso con error: constante de carácter mal formada}
+
+Entrada con una comilla simple que nunca se cierra:
+
+\begin{lstlisting}
+unam.fi.compilers.g5.06>python main.py --text "int number = 'a; printf(\"Enter a number:\");  scanf(\"%d\", &number); "
+keyword identifier operator
+Keyword: int
+Identifier: number
+Operator: =
+Total of tokens: 3
+Lexical error 1:14: malformed character constant
+\end{lstlisting}
+
+El AFD lee \cd{\textquotesingle a} y llega a $q_{23}$, pero el siguiente carácter es \cd{;} y desde $q_{23}$ solo hay transición con \cd{\textquotesingle}. El escaneo se detiene sin haber pasado por un estado final, así que se reporta el error en la línea 1, columna 14 (la posición de la comilla), con el mensaje de la Tabla 8 para $q_{21}$, $q_{22}$ y $q_{23}$. La recuperación salta hasta la siguiente \cd{\textquotesingle} de la línea o, si no hay otra, hasta el final de la línea. Aquí no hay otra comilla simple, por lo que se descarta el resto de la línea y por eso solo se emiten los tres tokens anteriores al error.
+
+\subsection{T4. Entrada para el analizador sintáctico}
+
+Entrada con la declaración usada en la sección CFG:
+
+\begin{lstlisting}
+unam.fi.compilers.g5.06>python main.py --text "int a = 10;"
+keyword identifier operator constant punctuation
+Keyword: int
+Identifier: a
+Operator: =
+Constant: 10
+Punctuation: ;
+Total of tokens: 5
+\end{lstlisting}
+
+Los cinco tokens corresponden a \cd{INT}, \cd{ID}, \cd{ASSIGN}, \cd{INT\_CONST} y \cd{SEMI}, que son los terminales \cd{int}, \cd{id}, \cd{=}, \cd{num} y \cd{;} de la gramática $G_1$.
+
+%=====================================================================
 \section{CFG}
 
-A continuacón se presenta la Gramática Libre de Contexto $G_0 = (N, T, P, S)$ para la declaración, con $N = \{\text{Decl}, \text{Type}, \text{Value}\}$, $T = \{\texttt{int}, \texttt{float}, \texttt{char}, \texttt{id}, \texttt{num}, \texttt{=}, \texttt{;}\}$ y $S = \text{Decl}$.
+A continuación se presenta la Gramática Libre de Contexto $G_0 = (N, T, P, S)$ para la declaración, con $N = \{\text{Decl}, \text{Type}, \text{Value}\}$, $T = \{\texttt{int}, \texttt{float}, \texttt{char}, \texttt{id}, \texttt{num}, \texttt{=}, \texttt{;}\}$ y $S = \text{Decl}$.
 
 \begin{align*}
 &1.\ \text{Decl} \rightarrow \text{Type}\ \texttt{id}\ \texttt{;} \\
@@ -574,7 +680,7 @@ Se tomó la secuencia de tokens \cd{int id = num ;} y se escribió una producci�
 \end{tabular}
 \end{center}
 
-Existe una consideración para la generación de LL(1). Las producciones 1 y 2 comparten el prefijo \cd{Type id}. Después de leer \cd{int a}, otro tippo de analizador no tendría esta consideración, por consecuencia, no sabría cuál aplicar, por lo tanto, en una tabla LL(1) ambas caerían en la celda $[\text{Decl}, \texttt{int}]$.
+Existe una consideración para la generación de LL(1). Las producciones 1 y 2 comparten el prefijo \cd{Type id}. Después de leer \cd{int a}, otro tipo de analizador no tendría esta consideración, por consecuencia, no sabría cuál aplicar, por lo tanto, en una tabla LL(1) ambas caerían en la celda $[\text{Decl}, \texttt{int}]$.
 
 
 %=====================================================================
@@ -590,6 +696,8 @@ Se factorizó el prefijo común de $G_0$ y se verificó que el resultado, $G_1$,
 &3.\ \text{Type} \rightarrow \texttt{int} \mid \texttt{float} \mid \texttt{char} \\
 &4.\ \text{Value} \rightarrow \texttt{num} \mid \texttt{id}
 \end{align*}
+
+La gramática factorizada es $G_1 = (N', T, P', S)$, con $N' = \{\text{Decl}, \text{Decl}', \text{Type}, \text{Value}\}$, el mismo conjunto de terminales $T$ de $G_0$, el símbolo inicial $S = \text{Decl}$ y $P'$ formado por las producciones anteriores. $N'$ incluye el no terminal nuevo $\text{Decl}'$ introducido por la factorización.
 
 La gramática resultante no presenta left factoring y elimina el prefijo común de las producciones de Decl. Posteriormente se verificó mediante FIRST, FOLLOW y la tabla predictiva que no presenta conflictos para este ejemplo.
 
@@ -608,9 +716,11 @@ Decl$'$ & $\{\texttt{;}, \texttt{=}\}$ & $\{\$\}$ \\
 Type & $\{\texttt{int}, \texttt{float}, \texttt{char}\}$ & $\{\texttt{id}\}$ \\
 Value & $\{\texttt{num}, \texttt{id}\}$ & $\{\texttt{;}\}$ \\
 \bottomrule
+\multicolumn{3}{c}{\vspace{2pt}\footnotesize \textbf{Tabla 9.} Conjuntos FIRST y FOLLOW calculados para la gramática $G_1$.} \\
 \end{tabular}
 \end{center}
 
+En la siguiente tabla se define la tabla LL(1).
 \begin{table}[H]
 \centering
 \scriptsize
@@ -625,6 +735,7 @@ Decl$'$ & & & & & & $\text{Decl}'\to\texttt{=}\ \text{Value}\ \texttt{;}$ & $\te
 Type  & $\text{Type}\to\texttt{int}$ & $\text{Type}\to\texttt{float}$ & $\text{Type}\to\texttt{char}$ & & & & & \\
 Value & & & & $\text{Value}\to\texttt{id}$ & $\text{Value}\to\texttt{num}$ & & & \\
 \bottomrule
+\multicolumn{9}{c}{\vspace{2pt}\footnotesize \textbf{Tabla 10.} Tabla de análisis sintáctico predictivo LL(1) para la gramática $G_1$.} \\
 \end{tabular}}
 \end{table}
 Cada celda tiene a lo más una producción, así que $G_1$ es LL(1). Traza de \cd{int id = num ;}, con el tope de la pila a la derecha como en clase:
@@ -646,6 +757,7 @@ Cada celda tiene a lo más una producción, así que $G_1$ es LL(1). Traza de \c
 9  & \texttt{\$ ;}               & \texttt{; \$}              & match \texttt{;} \\
 10 & \texttt{\$}                 & \texttt{\$}                & éxito \\
 \bottomrule
+\multicolumn{4}{c}{\vspace{2pt}\footnotesize \textbf{Tabla 11.} Traza del análisis sintáctico predictivo para la cadena \cd{int id = num ;}} \\
 \end{tabular}
 \end{center}
 
@@ -655,8 +767,19 @@ Cada celda tiene a lo más una producción, así que $G_1$ es LL(1). Traza de \c
     \caption{Árbol sintáctico de \texttt{int a = 10;} · gramática $G_1$}
 \end{figure}
 
-Las hojas del árbol son los tokens \cd{INT}, \cd{ID}, \cd{ASSIGN}, \cd{INT\_CONST} y \cd{SEMI}: exactamente la salida del lexer para T2.
+Las hojas del árbol son los tokens \cd{INT}, \cd{ID}, \cd{ASSIGN}, \cd{INT\_CONST} y \cd{SEMI}: exactamente la salida del lexer para la prueba T4 (sección Pruebas del analizador léxico).
 
 %=====================================================================
+\newpage
+%=====================================================================
+\section{Conclusiones}
+Este proyecto ofreció un analizador léxico construido desde la definición de las gramáticas hasta su implementación. Un listado de 45 tokens agrupados en palabras reservadas, identificadores, constantes, literales, operadores, puntuación y caracteres especiales fue el primer paso de diseño; también se diseñaron las expresiones regulares para estos tokens. Las expresiones regulares se tradujeron a un AFND de nueve sub-autómatas unidos por transiciones $\varepsilon$. Este autómata se convirtió en un autómata determinista de 25 estados mediante las técnicas de $\varepsilon$-cerradura y \textit{mover}.
+
+La regla del máximo bocado, con retroceso al último estado final visitado, resuelve la mayoría de las ambigüedades. Las palabras reservadas y los booleanos no necesitaron estados propios, porque se reconocen como identificadores y se clasifican con una tabla de búsqueda. Tratar \cd{+} y \cd{-} como operadores independientes evita ambigüedades en expresiones como \cd{a-1}. El único no determinismo real del lenguaje, el carácter \cd{/}, con facultad de iniciar un comentario o ser un operador, quedó resuelto en el estado $q_8$. La excepción del comentario de bloque sin cerrar evita que el escáner retroceda y reporte un \cd{/} en lugar del error real.
+
+El manejo de errores léxicos con recuperación en modo pánico permite que el analizador no se detenga ante el primer problema. Reporta línea y columna, y continúa con el resto de la entrada. La arquitectura en etapas (lectura, preprocesamiento, escaneo, clasificación y salida), con tabla de símbolos y manejador de errores, separa responsabilidades y facilita modificar cada parte por separado.
+
+Por último, la CFG de la declaración de variables, con su \textit{left factoring}, los conjuntos FIRST y FOLLOW y la tabla LL(1), mostró cómo el analizador léxico alimenta al sintáctico. Las hojas del árbol de \cd{int a = 10;} son exactamente los tokens que produce el lexer, lo que confirma que ambas fases quedaron bien conectadas. Como trabajo futuro, el lexer podría ampliarse con notación científica, operadores compuestos (\cd{++}, \cd{+=}) o comentarios anidados, y el tipo de cada identificador podría completarse en la tabla de símbolos durante el análisis semántico.
+
 
 \end{document}
