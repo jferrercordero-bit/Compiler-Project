@@ -2,7 +2,7 @@
 \usepackage{tocloft}
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
-\usepackage[spanish,es-noshorthands]{babel}
+\usepackage[english]{babel}
 \usepackage[margin=2.5cm]{geometry}
 \usepackage{graphicx}
 \usepackage{mathptmx} % Professional font (Times New Roman style)
@@ -21,19 +21,21 @@
 \usepackage{booktabs}
 \usepackage[table]{xcolor}
 \usepackage{tabularx}
+\usepackage{threeparttable} % For table notes
+\newcounter{notaid}
 
 
-\definecolor{tableheader}{RGB}{238, 237, 232} % Color beige del encabezado
-\definecolor{tablerow}{RGB}{249, 249, 247}    % Color beige muy claro para filas intercaladas
-\definecolor{stateblue}{RGB}{25, 118, 210}    % Color azul para estados y transiciones
+\definecolor{tableheader}{RGB}{238, 237, 232} % Beige header color
+\definecolor{tablerow}{RGB}{249, 249, 247}    % Very light beige for alternating rows
+\definecolor{stateblue}{RGB}{25, 118, 210}    % Blue for states and transitions
 
 \captionsetup{font=small}
 
-% --- Configuración del Índice (TOC) ---
-\setcounter{secnumdepth}{0} % Desactiva la numeración de los títulos en el texto e índice
-\setlength{\cftsecnumwidth}{0pt} % Elimina el espacio que ocupaban los números en el índice
+% --- Table of Contents (TOC) settings ---
+\setcounter{secnumdepth}{0} % Disables heading numbers in the text and TOC
+\setlength{\cftsecnumwidth}{0pt} % Removes the space used by numbers in the TOC
 
-% --- Estilo para código / pseudocódigo ---
+% --- Style for code / pseudocode ---
 \lstset{
   basicstyle=\ttfamily\small,
   columns=fullflexible,
@@ -50,10 +52,10 @@
            {Á}{{\'A}}1 {É}{{\'E}}1 {Í}{{\'I}}1 {Ó}{{\'O}}1 {Ú}{{\'U}}1 {Ñ}{{\~N}}1
 }
 
-% --- Macros auxiliares ---
-\newcommand{\cd}[1]{\texttt{#1}}                       % lexema / código en línea
-\newcommand{\tr}[3]{$#1 \xrightarrow{\,#2\,} #3$}      % transición del autómata
-\newcommand{\fin}{^{*}}                                % marca de estado final
+% --- Helper macros ---
+\newcommand{\cd}[1]{\texttt{#1}}                       % lexeme / inline code
+\newcommand{\tr}[3]{$#1 \xrightarrow{\,#2\,} #3$}      % automaton transition
+\newcommand{\fin}{^{*}}                                % final state mark
 \newcommand{\cell}[1]{\parbox[t]{\linewidth}{\raggedright #1}}
 
 \begin{document}
@@ -90,7 +92,7 @@
     % --- DETAILS & STUDENT INFO ---
     \begin{flushleft}
         \large
-        \textbf{Course:} Compiladores\\[0.2cm]
+        \textbf{Course:} Compilers\\[0.2cm]
         \textbf{Group:} 05\\[0.2cm]
         \textbf{Professor:} M.C. René Adrian Dávila Pérez\\[0.2cm]
         \textbf{Student(s):}\\[0.2cm]
@@ -103,72 +105,74 @@
 
     \vfill
 
-    % --- LOCATION & DATE ---
-    {\large \textbf{Mexico City, \today}}
-
 \end{titlepage}
 
 \newpage
-\pagenumbering{arabic} % Comienza la numeración de páginas en 1
+\pagenumbering{arabic} % Page numbering starts at 1
 \tableofcontents
 \newpage
 
-% --- CONTENIDO DEL DOCUMENTO ---
+% --- DOCUMENT CONTENT ---
 
 %=====================================================================
-\section{Introducción}
+\section{Introduction}
 
-En este documento se presentan las decisiones de modelado utilizadas para definir el comportamiento del analizador léxico, así como los elementos que posteriormente servirán como base para su implementación.
+Every compilation process essentially consists of three elements. First, lexical, syntactic, and semantic analysis constitute the first point of contact with the source code; the second element is a symbol table, used to organize all the identifiers in the source code; the third is a synthesis phase, in which intermediate code is generated for the final execution of the program.
 
-\textbf{Qué se hizo.} Una definición regular por cada clase de token y por cada elemento que se descarta.
+Under this premise, this work presents the development of the first element of a compiler, specifically the creation of a Lexical Analyzer. Its fundamental objective is to transform a continuous sequence of input characters into a series of syntactically meaningful units called tokens, while discarding non-significant elements such as whitespace and comments.
 
+The result of the project is a Lexical Analyzer capable of producing a token output to validate a character string. In addition, this analyzer considers a list of 45 representative tokens for keywords, identifiers, constants of different types, string literals, operators, and punctuation delimiters.
+
+\subsection{Regular Expressions}
+The formal definition of the regular expression for each token class and for each discardable element is presented below.
 \begin{align*}
-\text{letra} &\rightarrow [\text{a-zA-Z}] \\
-\text{digito} &\rightarrow [0\text{-}9] \\
-\text{escape} &\rightarrow \backslash\ (\text{cualquier carácter excepto salto de línea}) \\
-\text{identificador} &\rightarrow (\text{letra} \mid \text{\_})\ (\text{letra} \mid \text{digito} \mid \text{\_})^* \\
-\text{reservada} &\rightarrow \text{un lexema de identificador que está en la tabla de búsqueda} \\
-\text{entero} &\rightarrow \text{digito}^+ \\
-\text{decimal} &\rightarrow \text{digito}^+\ .\ \text{digito}^+ \\
-\text{caracter} &\rightarrow \text{\textquotesingle}\ (\text{cualquier carácter excepto \textquotesingle, } \backslash \text{ y salto de línea} \mid \text{escape})\ \text{\textquotesingle} \\
-\text{booleano} &\rightarrow \text{true} \mid \text{false} \quad \text{(se reconoce como identificador y se busca en la tabla)} \\
-\text{constante} &\rightarrow \text{entero} \mid \text{decimal} \mid \text{caracter} \mid \text{booleano} \\
-\text{literal} &\rightarrow \text{\textquotedbl}\ (\text{cualquier carácter excepto \textquotedbl, } \backslash \text{ y salto de línea} \mid \text{escape})^*\ \text{\textquotedbl} \\
-\text{operador} &\rightarrow + \mid - \mid * \mid / \mid \% \mid = \mid == \mid ! \mid != \mid < \mid <= \mid > \mid >= \mid \& \mid \&\& \mid \text{\textquotedbl}\!\mid\!\text{\textquotedbl} \mid \text{\textquotedbl}\!\mid\!\mid\!\text{\textquotedbl} \\
-\text{puntuacion} &\rightarrow ( \mid ) \mid \{ \mid \} \mid [ \mid ] \mid ; \mid , \\
-\text{especial} &\rightarrow \# \mid . \\
-\text{blanco} &\rightarrow (\text{espacio} \mid \backslash\text{t} \mid \backslash\text{r} \mid \backslash\text{n})^+ \quad \text{se descarta} \\
-\text{comentario} &\rightarrow // \ (\text{cualquier carácter excepto salto de línea})^* \\
-&\quad \mid /* \ ([\hat{\ }*] \mid *^+ [\hat{\ }*/])^* \ *^+ / \quad \text{se descarta}
+\text{letter} &\rightarrow [\text{a-zA-Z}] \\
+\text{digit} &\rightarrow [0\text{-}9] \\
+\text{escape} &\rightarrow \backslash\ (\text{any character except newline}) \\
+\text{identifier} &\rightarrow (\text{letter} \mid \text{\_})\ (\text{letter} \mid \text{digit} \mid \text{\_})^* \\
+\text{keyword} &\rightarrow \text{an identifier lexeme that is in the lookup table} \\
+\text{integer} &\rightarrow \text{digit}^+ \\
+\text{decimal} &\rightarrow \text{digit}^+\ .\ \text{digit}^+ \\
+\text{character} &\rightarrow \text{\textquotesingle}\ (\text{any character except \textquotesingle, } \backslash \text{ and newline} \mid \text{escape})\ \text{\textquotesingle} \\
+\text{boolean} &\rightarrow \text{true} \mid \text{false} \quad \text{(recognized as an identifier and looked up in the table)} \\
+\text{constant} &\rightarrow \text{integer} \mid \text{decimal} \mid \text{character} \mid \text{boolean} \\
+\text{literal} &\rightarrow \text{\textquotedbl}\ (\text{any character except \textquotedbl, } \backslash \text{ and newline} \mid \text{escape})^*\ \text{\textquotedbl} \\
+\text{operator} &\rightarrow + \mid - \mid * \mid / \mid \% \mid = \mid == \mid ! \mid != \mid < \mid <= \mid > \mid >= \mid \& \mid \&\& \mid \text{\textbar} \mid \text{\textbar\textbar} \\
+\text{punctuation} &\rightarrow ( \mid ) \mid \{ \mid \} \mid [ \mid ] \mid ; \mid , \\
+\text{special} &\rightarrow \# \mid . \\
+\text{whitespace} &\rightarrow (\text{space} \mid \backslash\text{t} \mid \backslash\text{r} \mid \backslash\text{n})^+ \quad \text{discarded} \\
+\text{comment} &\rightarrow // \ (\text{any character except newline})^* \\
+&\quad \mid /* \ ([\hat{\ }*] \mid *^+ [\hat{\ }*/])^* \ *^+ / \quad \text{discarded}
 \end{align*}
+\newpage
+For identifiers, the first character may be a letter or an underscore, while the following characters may include letters, digits, or underscores. A decimal requires at least one digit after the point, so ``5.'' is not a complete constant.
 
-Para los identificadores se consideró que el primer carácter puede ser una letra o guion bajo, mientras que los siguientes pueden incluir letras, dígitos o guion bajo. El decimal exige al menos un dígito después del punto, así que "5." no es una constante completa.
+The + and - signs are not considered part of numeric constants, but rather independent operators. In this way, an expression such as a-1 is recognized as an identifier, a subtraction operator, and an integer constant.
 
-Los signos + y - no se consideran parte de las constantes numéricas, sino operadores independientes. De esta manera, una expresión como a-1 se reconoce como un identificador, un operador de resta y una constante entera.
+The ``escape'' token (the \textbackslash{} symbol) applies to strings and character constants; it allows the lexer to add quotation marks or any character other than newline to text strings without it being interpreted as the end of the string. For example, in \texttt{"Hello \textbackslash"John\textbackslash""}, a quotation mark preceded by the escape symbol does not mark the end of the string.
 
-El token del tipo “scape” "(símbolo \textbackslash)~" se aplica en cadenas y constantes, su uso permite al Lexer agregar comillas u otros caracteres distintos al salto de línea a cadenas de texto sin la interpretación de fin de cadena. Por ejemplo, en \texttt{"Hello \textbackslash"John\textbackslash""}, la comilla seguida del símbolo definido como scape no implica el final de la cadena.
+Tokens of type ``Literal'' and ``Character'' do not allow line breaks; consequently, the analyzer reports an error on the line where the string begins if it is not properly closed. Literals refer to strings enclosed in double quotes, "...", while characters are constants that contain exactly one element between single quotes ' '.
 
-Los tokens del tipo "Literal y Caracter" no admiten saltos de línea, en consecuencia, el analizador detecta un error en la línea donde empiezan la cadena si esta no se cierra correctamente. Las literales se refieren a las cadenas construidas entre comillas dobles, "...", mientras que los caracteres son constantes que contienen exactamente solo un elemento entre comillas simples ' '.
+Boolean tokens (true and false) are words; they follow the identifier path and are distinguished in the lookup table, so they do not need states of their own. Block comments may contain any content until the closing sequence */ is found. The pattern must prevent an isolated asterisk from closing the comment incorrectly.
 
-Los tokens de tipo boolean (true y false) son palabras, estas siguen el camino del identificador y se distinguen en la tabla de búsqueda; no necesitan estados propios. En los comentarios de bloque se permite cualquier contenido hasta encontrar la secuencia de cierre */. El patrón debe evitar que un asterisco aislado cierre el comentario de forma incorrecta.
+The analyzer reads the entire lexeme until it produces a valid token; even if it encounters characters or identifiers associated with a specific token, the lexeme is read completely. Finally, it is compared against the keywords and reserved operators.
 
-El analizador lee todo el lexema hasta generar un token válido, aún si encuentra caracteres o identificadores catalogados a cierto token específico, se lee por completo.Al finalizar se compara con alguna de las palabras u operadores reservados.
-
-Estas expresiones regulares sirven como base para la construcción de los autómatas. En la implementación no se van a usar directamente mediante una biblioteca de expresiones regulares, ya que serán representadas mediante el AFD que se va a construir más adelante.
+These regular expressions serve as the basis for building the automata. In the implementation they will not be used directly through a regular expression library, since they will be represented by the DFA constructed later on.
 
 %=====================================================================
-\section{Definición formal de cada token}
+\section{Formal Definition of Each Token}
 
-A continuación se presenta una lista de 45 tokens agrupados en Palabra reservada, identificador, constante, literal, operador, puntuación y carácter especial.
+The following is a list of 45 tokens grouped into keywords, identifiers, constants, literals, operators, punctuation, and special characters.
 
 \begin{center}
 \small
 \begin{longtable}{@{}r l l p{6.6cm}@{}}
 \toprule
-\textbf{\#} & \textbf{TokenType} & \textbf{Clase (salida)} & \textbf{Lexema o patrón} \\
+\textbf{\#} & \textbf{TokenType} & \textbf{Class (output)} & \textbf{Lexeme or pattern} \\
 \midrule
 \endhead
 \bottomrule
+\multicolumn{4}{c}{\vspace{2pt}\footnotesize \textbf{Table \thetable:} Formal definition of each token.} \\
 \endfoot
 1  & \cd{INT}         & keyword     & \cd{int} \\
 2  & \cd{FLOAT}       & keyword     & \cd{float} \\
@@ -181,13 +185,13 @@ A continuación se presenta una lista de 45 tokens agrupados en Palabra reservad
 9  & \cd{WHILE}       & keyword     & \cd{while} \\
 10 & \cd{FOR}         & keyword     & \cd{for} \\
 11 & \cd{PRINT}       & keyword     & \cd{print} \\
-12 & \cd{ID}          & identifier  & \cd{letra} \\ 
-13 & \cd{INT\_CONST}  & constant    & \cd{uno o más digitos} \\
-14 & \cd{FLOAT\_CONST}& constant    & dígitos, punto, dígitos \\
-15 & \cd{CHAR\_CONST} & constant    & un carácter o un escape entre comillas simples \\
+12 & \cd{ID}          & identifier  & \cd{(letter \textbar\ \_)(letter \textbar\ digit \textbar\ \_)*} \\
+13 & \cd{INT\_CONST}  & constant    & \cd{one or more digits} \\
+14 & \cd{FLOAT\_CONST}& constant    & digits, point, digits \\
+15 & \cd{CHAR\_CONST} & constant    & one character or one escape between single quotes \\
 16 & \cd{TRUE}        & constant    & \cd{true} \\
 17 & \cd{FALSE}       & constant    & \cd{false} \\
-18 & \cd{STRING}      & literal     & cero o más caracteres o escapes entre comillas dobles \\
+18 & \cd{STRING}      & literal     & zero or more characters or escapes between double quotes \\
 19 & \cd{PLUS}        & operator    & \cd{+} \\
 20 & \cd{MINUS}       & operator    & \cd{-} \\
 21 & \cd{STAR}        & operator    & \cd{*} \\
@@ -216,50 +220,54 @@ A continuación se presenta una lista de 45 tokens agrupados en Palabra reservad
 44 & \cd{HASH}        & special     & \cd{\#} \\
 45 & \cd{DOT}         & special     & \cd{.} \\
 \end{longtable}
+
+
+
 \end{center}
 
 %=====================================================================
-\subsection{Prioridad de reconocimiento}
-La prioridad de los Tokens, cuando se reconoce más de un padrón a la entrada, se determinó a partir de las siguientes cinco reglas.
+\subsection{Recognition Priority}
+When more than one pattern matches the input, token priority was determined by the following five rules.
 
 \begin{enumerate}
-    \item \textbf{Máximo bocado.} Toma el lexema más largo que termine en un estado final.
-    \item \textbf{Tabla antes que identificador.} Si el lexema termina en $q_1$ y está en la tabla de búsqueda, gana la tabla. Por ejemplo: \cd{int} es palabra reservada y \cd{true} es constante.
-    \item \textbf{Lo que no es token compite igual.} Espacios y comentarios se reconocen con las mismas reglas y después se descartan.
-    \item \textbf{Excepción del comentario sin cerrar.} Si la entrada se acaba dentro de un comentario de bloque ($q_{10}$ o $q_{11}$), no se retrocede al \cd{/} de $q_8$: se reporta comentario sin cerrar.
-    \item \textbf{Sin estado final no hay token.} Si ningún prefijo llega a un estado final, se reporta un error léxico; no existe un token por defecto.
+    \item \textbf{Maximal munch.} Take the longest lexeme that ends in a final state.
+    \item \textbf{Table before identifier.} If the lexeme ends in $q_1$ and is in the lookup table, the table wins. For example: \cd{int} is a keyword and \cd{true} is a constant.
+    \item \textbf{Non-tokens compete equally.} Whitespace and comments are recognized with the same rules and then discarded.
+    \item \textbf{Unclosed comment exception.} If the input ends inside a block comment ($q_{10}$ or $q_{11}$), the scanner does not back up to the \cd{/} of $q_8$: an unclosed comment is reported.
+    \item \textbf{No final state, no token.} If no prefix reaches a final state, a lexical error is reported; there is no default token.
 \end{enumerate}
 
-El máximo bocado es el primero porque toma la decisón en la mayoría de los casos y \textbf{nunca entra en conflicto con las otras reglas}. La tabla va después porque solo actúa cuando el lexema ya terminó en $q_1$. Con estas reglas se resuelven los casos de ambigüedad considerados en el lenguaje definido para la práctica.
+Maximal munch comes first because it makes the decision in most cases and \textbf{never conflicts with the other rules}. The table comes next because it only acts once the lexeme has already ended in $q_1$. These rules resolve the ambiguity cases considered in the language defined for this assignment.
 
- La regla cuatro se presenta en el AFD. Si \cd{/* ...} llega al final sin cerrarse, el último estado final visitado es $q_8$; sin la excepción, el escáner retrocedería y reportaría un operador \cd{/} en vez del error real.
+ Rule four appears in the DFA. If \cd{/* ...} reaches the end without being closed, the last final state visited is $q_8$; without the exception, the scanner would back up and report a \cd{/} operator instead of the actual error.
 
 %=====================================================================
-\section{AFND}
+\newpage
+\section{NFA}
 
-El siguiente autómata fue realizado en colaboración con los compañeros de clase durante una de de las sesiones teóricas de la materia. Este sirve como base teórica para la construcción del autómata correspondiente a analizador léxico de este proyecto.
+The following automaton was built together with our classmates during one of the course's lecture sessions. It serves as the theoretical basis for building the automaton of this project's lexical analyzer.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.95\textwidth]{afnd-ejemplo.png}
-    \caption{AFD realizado en sesiones teóricas.}
+    \caption{NFA built during the lecture sessions.}
 \end{figure}
 
 \begin{flushleft}
 \begin{tabular}{@{}p{0.62\textwidth} l@{}}
 \tr{S}{\varepsilon}{A}\quad \tr{S}{\varepsilon}{D}\quad \tr{S}{\varepsilon}{F} & \\[0.3em]
-\tr{A}{\cd{i}}{B}\quad \tr{B}{\cd{f}}{C\fin} & palabra reservada \cd{if} \\[0.3em]
-\tr{D}{\cd{[a-zA-Z\_]}}{E\fin}\quad \tr{E}{\cd{[a-zA-Z0-9\_]}}{E} & identificador \\[0.3em]
-\tr{F}{\cd{+}|\cd{-}}{G}\quad \tr{F}{\varepsilon}{G}\quad \tr{G}{\cd{[0-9]}}{H\fin}\quad \tr{H}{\varepsilon}{G} & entero \\
+\tr{A}{\cd{i}}{B}\quad \tr{B}{\cd{f}}{C\fin} & keyword \cd{if} \\[0.3em]
+\tr{D}{\cd{[a-zA-Z\_]}}{E\fin}\quad \tr{E}{\cd{[a-zA-Z0-9\_]}}{E} & identifier \\[0.3em]
+\tr{F}{\cd{+}|\cd{-}}{G}\quad \tr{F}{\varepsilon}{G}\quad \tr{G}{\cd{[0-9]}}{H\fin}\quad \tr{H}{\varepsilon}{G} & integer \\
 \end{tabular}
 
 \smallskip
-$(^{*} = \text{estado final})$
+$(^{*} = \text{final state})$
 \end{flushleft}
 
-\subsection{AFND. Lexical Analyzer}
+\subsection{NFA. Lexical Analyzer}
 
-Cada definición regular de la sección 1 se tradujo a un sub-autómata, es decir, un estado por cada punto del patrón donde se espera un tipo distinto de carácter, y un estado final donde el patrón puede terminar. Después, S se unió a los nueve estados iniciales del autómata de la sección anterior con movimientos $\varepsilon$.
+Each regular definition from the previous section was translated into a sub-automaton, that is, one state for each point in the pattern where a different type of character is expected, and a final state where the pattern can end. Then, $S$ was joined to the nine initial states of the automaton from the previous section through $\varepsilon$-moves.
 
 \vspace{0.3cm}
 
@@ -268,103 +276,107 @@ Cada definición regular de la sección 1 se tradujo a un sub-autómata, es deci
 \rowcolors{2}{tablerow}{white}
 \begin{tabularx}{\textwidth}{@{} >{\bfseries}p{2.8cm} X p{5.5cm} @{}}
 \rowcolor{tableheader}
-\textbf{Sub-autómata} & \textbf{Transiciones (origen $\rightarrow$ símbolo $\rightarrow$ destino)} & \textbf{Estados finales} \\ 
+\textbf{Sub-automaton} & \textbf{Transitions (source $\rightarrow$ symbol $\rightarrow$ target)} & \textbf{Final states} \\ 
 \toprule
 
-Inicio & $S \xrightarrow{\,\varepsilon\,} I_0, N_0, T_0, K_0, C_0, O_0, P_0, X_0, W_0$ & $S$: estado inicial \\
+Start & $S \xrightarrow{\,\varepsilon\,} I_0, N_0, T_0, K_0, C_0, O_0, P_0, X_0, W_0$ & $S$: initial state \\
 
-Identificador & $I_0 \xrightarrow{\,L\,} I_1^*$ \quad $I_1 \xrightarrow{\,L \mid D\,} I_1^*$ & $I_1$: identificador o reservada \\
+Identifier & $I_0 \xrightarrow{\,L\,} I_1^*$ \quad $I_1 \xrightarrow{\,L \mid D\,} I_1^*$ & $I_1$: identifier or keyword \\
 
-Número & $N_0 \xrightarrow{\,D\,} N_1^*$ \quad $N_1 \xrightarrow{\,D\,} N_1^*$ \quad $N_1 \xrightarrow{\,.\,} N_2$ & $N_1$: entero \\
+Number & $N_0 \xrightarrow{\,D\,} N_1^*$ \quad $N_1 \xrightarrow{\,D\,} N_1^*$ \quad $N_1 \xrightarrow{\,.\,} N_2$ & $N_1$: integer \\
 & $N_2 \xrightarrow{\,D\,} N_3^*$ \quad $N_3 \xrightarrow{\,D\,} N_3^*$ & $N_3$: decimal \\
 
-Cadena & $T_0 \xrightarrow{\,"\,} T_1$ \quad $T_1 \xrightarrow{\,c\,} T_1$ \quad $T_1 \xrightarrow{\,\backslash\,} T_2$ & $T_3$: literal (cadena) \\
+String & $T_0 \xrightarrow{\,"\,} T_1$ \quad $T_1 \xrightarrow{\,c\,} T_1$ \quad $T_1 \xrightarrow{\,\backslash\,} T_2$ & $T_3$: literal (string) \\
 & $T_2 \xrightarrow{\,a\,} T_1$ \quad $T_1 \xrightarrow{\,"\,} T_3^*$ & \\
 
-Carácter & $K_0 \xrightarrow{\,'\,} K_1$ \quad $K_1 \xrightarrow{\,k\,} K_2$ \quad $K_1 \xrightarrow{\,\backslash\,} K_3$ & $K_4$: constante de carácter \\
+Character & $K_0 \xrightarrow{\,'\,} K_1$ \quad $K_1 \xrightarrow{\,k\,} K_2$ \quad $K_1 \xrightarrow{\,\backslash\,} K_3$ & $K_4$: character constant \\
 & $K_3 \xrightarrow{\,a\,} K_2$ \quad $K_2 \xrightarrow{\,'\,} K_4^*$ & \\
 
-Comentarios & $C_0 \xrightarrow{\,/\,} C_1$ \quad $C_1 \xrightarrow{\,/\,} C_2^*$ \quad $C_2 \xrightarrow{\,a\,} C_2^*$ & $C_2$: comentario de línea \\
-& $C_1 \xrightarrow{\,*\,} C_3$ \quad $C_3 \xrightarrow{\,m\,} C_3$ \quad $C_3 \xrightarrow{\,*\,} C_4$ & $C_5$: comentario de bloque \\
-& $C_4 \xrightarrow{\,*\,} C_4$ \quad $C_4 \xrightarrow{\,n\,} C_3$ \quad $C_4 \xrightarrow{\,/\,} C_5^*$ & (ambos se descartan) \\
+Comments & $C_0 \xrightarrow{\,/\,} C_1$ \quad $C_1 \xrightarrow{\,/\,} C_2^*$ \quad $C_2 \xrightarrow{\,a\,} C_2^*$ & $C_2$: line comment \\
+& $C_1 \xrightarrow{\,*\,} C_3$ \quad $C_3 \xrightarrow{\,m\,} C_3$ \quad $C_3 \xrightarrow{\,*\,} C_4$ & $C_5$: block comment \\
+& $C_4 \xrightarrow{\,*\,} C_4$ \quad $C_4 \xrightarrow{\,n\,} C_3$ \quad $C_4 \xrightarrow{\,/\,} C_5^*$ & (both are discarded) \\
 
-Operadores & $O_0 \xrightarrow{\text{+ - * \% /}} O_1^*$ \quad $O_0 \xrightarrow{\text{= ! < >}} O_2^*$ \quad $O_2 \xrightarrow{\text{=}} O_3^*$ & $O_1, O_2, O_4, O_5$: un carácter \\
-& $O_0 \xrightarrow{\text{\&}} O_4^*$ \quad $O_4 \xrightarrow{\text{\&}} O_3^*$ \quad $O_0 \xrightarrow{\text{|}} O_5^*$ & $O_3$: dos caracteres \\
+Operators & $O_0 \xrightarrow{\text{+ - * \% /}} O_1^*$ \quad $O_0 \xrightarrow{\text{= ! < >}} O_2^*$ \quad $O_2 \xrightarrow{\text{=}} O_3^*$ & $O_1, O_2, O_4, O_5$: one character \\
+& $O_0 \xrightarrow{\text{\&}} O_4^*$ \quad $O_4 \xrightarrow{\text{\&}} O_3^*$ \quad $O_0 \xrightarrow{\text{|}} O_5^*$ & $O_3$: two characters \\
 & $O_5 \xrightarrow{\text{|}} O_3^*$ & \\
 
-Puntuación & $P_0 \xrightarrow{\,\text{PUNCT}\,} P_1^*$ & $P_1$: puntuación \\
+Punctuation & $P_0 \xrightarrow{\,\text{PUNCT}\,} P_1^*$ & $P_1$: punctuation \\
 
-Especial & $X_0 \xrightarrow{\,\#\, .\,} X_1^*$ & $X_1$: carácter especial \\
+Special & $X_0 \xrightarrow{\,\#\, .\,} X_1^*$ & $X_1$: special character \\
 
-Blanco & $W_0 \xrightarrow{\,\text{WS, NL}\,} W_1^*$ \quad $W_1 \xrightarrow{\,\text{WS, NL}\,} W_1^*$ & $W_1$: blanco (se descarta) \\
+Whitespace & $W_0 \xrightarrow{\,\text{WS, NL}\,} W_1^*$ \quad $W_1 \xrightarrow{\,\text{WS, NL}\,} W_1^*$ & $W_1$: whitespace (discarded) \\
 \bottomrule
+
+% --- CENTERED TABLE NOTE WITH COUNTER ---
+\multicolumn{3}{c}{\vspace{2pt}\footnotesize \textbf{Table 2.} Transitions and final states for each sub-automaton of the Lexer.} \\
 \end{tabularx}
 }
 
 \vspace{0.4cm}
 
-\textbf{Símbolos}
+\textbf{Symbols}
 {\small
 \begin{flushleft}
 \begin{tabular}{@{}l l l l@{}}
-$L$ = letra o \_ & $D$ = dígito & $\text{PUNCT} = \cd{( ) \{ \} [ ] ; ,}$ & $\text{WS} = \text{espacio, tabulador, CR}$ \\
-$c$ = cualquier carácter excepto \cd{"}, \cd{\textbackslash} y NL & $k$ = cualquier carácter excepto \cd{\textquotesingle}, \cd{\textbackslash} y NL & $a$ = cualquier carácter excepto NL & $\text{NL} = \text{salto de línea}$ \\
-$m$ = cualquier carácter excepto \cd{*} & $n$ = cualquier carácter excepto \cd{*} y \cd{/} & $[\ ] = \text{cualquiera de los símbolos indicados}$ & \\
+$L$ = letter or \_ & $D$ = digit & $\text{PUNCT} = \cd{( ) \{ \} [ ] ; ,}$ & $\text{WS} = \text{space, tab, CR}$ \\
+$c$ = any character except \cd{"}, \cd{\textbackslash} and NL & $k$ = any character except \cd{\textquotesingle}, \cd{\textbackslash} and NL & $a$ = any character except NL & $\text{NL} = \text{newline}$ \\
+$m$ = any character except \cd{*} & $n$ = any character except \cd{*} and \cd{/} & $[\ ] = \text{any of the listed symbols}$ & \\
 \end{tabular}
 \end{flushleft}
 }
 
-Único no determinismo: $S$, que con $\varepsilon$ abre los nueve sub-autómatas a la vez, y el carácter \cd{/}, que lleva tanto a $O_1$ (operador) como a $C_1$ (comentario). Cada sub-autómata, por separado, ya es determinista.
+The only nondeterminism: $S$, which opens all nine sub-automata at once via $\varepsilon$, and the character \cd{/}, which leads both to $O_1$ (operator) and to $C_1$ (comment). Each sub-automaton, taken separately, is already deterministic.
 
 
 %=====================================================================
-\section{Conversión AFND $\rightarrow$ AFD}
+\section{NFA $\rightarrow$ DFA Conversion}
 
-Un AFD tiene exactamente un movimiento por estado y símbolo, así que se ejecuta en una sola pasada con una consulta a la tabla por carácter. El AFD resultante puede implementarse mediante una tabla de transiciones, permitiendo determinar el siguiente estado a partir del estado actual y la clase del carácter leído.
+A DFA has exactly one move per state and symbol, so it runs in a single pass with one table lookup per character. The resulting DFA can be implemented with a transition table, which determines the next state from the current state and the class of the character read.
 
-\subsection{Método, con el ejemplo de clase}
+\subsection{Method, Using the Class Example}
 
-Se usan dos operaciones. $\varepsilon$-cerradura($T$) son los estados a los que se llega desde $T$ solo con $\varepsilon$; mover($T$, $a$) son los estados a los que se llega desde $T$ con el símbolo $a$. Cada estado del AFD es un conjunto de estados del AFND.
+Two operations are used. $\varepsilon$-closure($T$) is the set of states reachable from $T$ using only $\varepsilon$; move($T$, $a$) is the set of states reachable from $T$ on symbol $a$. Each DFA state is a set of NFA states.
 
 \begin{enumerate}
-    \item $Q_0 = \varepsilon\text{-cerradura}(S)$. Desde $S$, $\varepsilon$ lleva a $A$, $D$ y $F$; desde $F$, $\varepsilon$ lleva a $G$. $Q_0 = \{S, A, D, F, G\}$.
-    \item Desde $Q_0$ con \cd{i}: $A$ pasa a $B$ y $D$ pasa a $E$. Resultado $\{B, E\} = Q_1$.
-    \item Desde $Q_0$ con \cd{f}, otra letra o \cd{\_}: solo $D$ se mueve, a $E$. Resultado $\{E\} = Q_2$.
-    \item Desde $Q_0$ con un dígito: $G$ pasa a $H$, y por $\varepsilon$ $H$ regresa a $G$. Resultado $\{G, H\} = Q_3$.
-    \item Desde $Q_0$ con \cd{+} o \cd{-}: $F$ pasa a $G$. Resultado $\{G\} = Q_4$.
-    \item Desde $Q_1$ con \cd{f}: $B$ pasa a $C$ y $E$ se queda en $E$. Resultado $\{C, E\} = Q_5$.
-    \item Desde $Q_1$ con otra letra o un dígito: solo $E$ se mueve. Resultado $\{E\} = Q_2$.
-    \item $Q_2$ se cicla en sí mismo; $Q_3$ y $Q_4$ con dígito van a $Q_3$; $Q_5$ con letra o dígito va a $Q_2$ (\cd{ifx} es identificador).
-    \item Un estado del AFD es final si contiene algún estado final del AFND.
+    \item $Q_0 = \varepsilon\text{-closure}(S)$. From $S$, $\varepsilon$ leads to $A$, $D$ and $F$; from $F$, $\varepsilon$ leads to $G$. $Q_0 = \{S, A, D, F, G\}$.
+    \item From $Q_0$ on \cd{i}: $A$ goes to $B$ and $D$ goes to $E$. Result $\{B, E\} = Q_1$.
+    \item From $Q_0$ on \cd{f}, another letter, or \cd{\_}: only $D$ moves, to $E$. Result $\{E\} = Q_2$.
+    \item From $Q_0$ on a digit: $G$ goes to $H$, and via $\varepsilon$ $H$ returns to $G$. Result $\{G, H\} = Q_3$.
+    \item From $Q_0$ on \cd{+} or \cd{-}: $F$ goes to $G$. Result $\{G\} = Q_4$.
+    \item From $Q_1$ on \cd{f}: $B$ goes to $C$ and $E$ stays in $E$. Result $\{C, E\} = Q_5$.
+    \item From $Q_1$ on another letter or a digit: only $E$ moves. Result $\{E\} = Q_2$.
+    \item $Q_2$ loops on itself; $Q_3$ and $Q_4$ go to $Q_3$ on a digit; $Q_5$ goes to $Q_2$ on a letter or digit (\cd{ifx} is an identifier).
+    \item A DFA state is final if it contains any NFA final state.
 \end{enumerate}
 
 \begin{center}
 \small
 \begin{tabularx}{\textwidth}{@{}l l c c c c c X@{}}
 \toprule
-\textbf{Estado AFD} & \textbf{Estados AFND} & \cd{i} & \cd{f} & \textbf{otra letra, \cd{\_}} & \textbf{dígito} & \cd{+} o \cd{-} & \textbf{¿Final?} \\
+\textbf{DFA state} & \textbf{NFA states} & \cd{i} & \cd{f} & \textbf{other letter, \cd{\_}} & \textbf{digit} & \cd{+} or \cd{-} & \textbf{Final?} \\
 \midrule
 $Q_0$ & $\{S, A, D, F, G\}$ & $Q_1$ & $Q_2$ & $Q_2$ & $Q_3$ & $Q_4$ & no \\
-$Q_1$ & $\{B, E\}$ & $Q_2$ & $Q_5$ & $Q_2$ & $Q_2$ & -- & identificador \\
-$Q_2$ & $\{E\}$ & $Q_2$ & $Q_2$ & $Q_2$ & $Q_2$ & -- & identificador \\
-$Q_3$ & $\{G, H\}$ & -- & -- & -- & $Q_3$ & -- & entero \\
+$Q_1$ & $\{B, E\}$ & $Q_2$ & $Q_5$ & $Q_2$ & $Q_2$ & -- & identifier \\
+$Q_2$ & $\{E\}$ & $Q_2$ & $Q_2$ & $Q_2$ & $Q_2$ & -- & identifier \\
+$Q_3$ & $\{G, H\}$ & -- & -- & -- & $Q_3$ & -- & integer \\
 $Q_4$ & $\{G\}$ & -- & -- & -- & $Q_3$ & -- & no \\
-$Q_5$ & $\{C, E\}$ & $Q_2$ & $Q_2$ & $Q_2$ & $Q_2$ & -- & \cd{if} (prioridad sobre identificador) \\
+$Q_5$ & $\{C, E\}$ & $Q_2$ & $Q_2$ & $Q_2$ & $Q_2$ & -- & \cd{if} (priority over identifier) \\
 \bottomrule
+\multicolumn{8}{c}{\vspace{2pt}\footnotesize \textbf{Table 3.} State transitions for the conversion example.} \\
 \end{tabularx}
 \end{center}
 
-$Q_5$ contiene estados finales de dos clases, $C$ (\cd{if}) y $E$ (identificador), esto se resuelve con la regla 2 “Tabla antes que identificador”. El resultado es el mismo que reconocer todo como identificador y luego consultar una tabla.
+$Q_5$ contains final states of two classes, $C$ (\cd{if}) and $E$ (identifier); this is resolved with rule 2, ``Table before identifier''. The result is the same as recognizing everything as an identifier and then querying a table.
 
-\subsection{Conversión del AFND completo}
+\subsection{Conversion of the Complete NFA}
 
-$\varepsilon$-cerradura($S$) da $q_0$, y cada símbolo de entrada lleva a un conjunto de estados del AFND que se vuelve un estado del AFD:
+$\varepsilon$-closure($S$) gives $q_0$, and each input symbol leads to a set of NFA states that becomes a DFA state:
 
 \begin{center}
 \small
 \begin{tabular}{@{}l l @{\hspace{1.5cm}} l l@{}}
 \toprule
-\textbf{Estado AFD} & \textbf{Conjunto del AFND} & \textbf{Estado AFD} & \textbf{Conjunto del AFND} \\
+\textbf{DFA state} & \textbf{NFA set} & \textbf{DFA state} & \textbf{NFA set} \\
 \midrule
 $q_0$    & $\{S, I_0, N_0, T_0, K_0, C_0, O_0, P_0, X_0, W_0\}$ & $q_{13}$ & $\{O_3\}$ \\
 $q_1$    & $\{I_1\}$ & $q_{14}$ & $\{O_4\}$ \\
@@ -380,46 +392,48 @@ $q_{10}$ & $\{C_3\}$ & $q_{23}$ & $\{K_2\}$ \\
 $q_{11}$ & $\{C_4\}$ & $q_{24}$ & $\{K_4\}$ \\
 $q_{12}$ & $\{O_2\}$ & & \\
 \bottomrule
+\multicolumn{4}{c}{\vspace{2pt}\footnotesize \textbf{Table 4.} State correspondence between the complete NFA and the resulting DFA.} \\
 \end{tabular}
 \end{center}
 
-Solo $q_0$ y $q_8$ agrupan más de un estado del AFND, porque ahí estaba el único no determinismo. Los demás coinciden uno a uno, por eso el AFD se puede dibujar como una fila por clase.
+Only $q_0$ and $q_8$ group more than one NFA state, because that is where the only nondeterminism was. The rest match one to one, which is why the DFA can be drawn as one row per class.
 
-\subsection{AFD final}
+\subsection{Final DFA}
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.95\textwidth]{afd.png}
-    \caption{AFD del lexer · 25 estados, 16 finales}
+    \caption{Lexer DFA · 25 states, 16 final}
 \end{figure}
 
-Cada clase de token tiene su propia fila, así que el estado final donde se detiene el escaneo fija la clase del lexema.
+Each token class has its own row, so the final state where scanning stops determines the class of the lexeme.
 
-Algunos estados correspondientes a operadores presentan el mismo comportamiento respecto a las clases de entrada, por lo que pueden representarse mediante un mismo estado. Por ejemplo, los operadores \cd{=}, \cd{!}, \cd{<} y \cd{>} comparten un estado intermedio, ya que pueden finalizar individualmente o continuar con \cd{=} para formar un operador de dos caracteres. Por eso \cd{= ! < >} comparten $q_{12}$ y todos los operadores de dos caracteres terminan en $q_{13}$. $q_{14}$ y $q_{15}$ no se fusionan, porque $q_{14}$ avanza con \cd{\&} y $q_{15}$ con \cd{\textbar}.
+Some operator states behave identically with respect to the input classes, so they can be represented by a single state. For example, the operators \cd{=}, \cd{!}, \cd{<} and \cd{>} share an intermediate state, since they can end on their own or continue with \cd{=} to form a two-character operator. That is why \cd{= ! < >} share $q_{12}$ and all two-character operators end in $q_{13}$. $q_{14}$ and $q_{15}$ are not merged, because $q_{14}$ advances on \cd{\&} and $q_{15}$ on \cd{\textbar}.
 
-Dos caracteres van en la misma columna si se comportan igual en todos los estados. Así, las 128 columnas de ASCII se reducen a 18. Esta agrupación evita definir una columna independiente para cada carácter ASCII. Por ejemplo, todas las letras se comportan de la misma manera en las transiciones asociadas a identificadores, por lo que se agrupan en la clase \cd{L}.
+Two characters go in the same column if they behave the same in every state. Thus, the 128 ASCII columns are reduced to 18. This grouping avoids defining a separate column for each ASCII character. For example, all letters behave the same way in the transitions associated with identifiers, so they are grouped into class \cd{L}.
 
 \begin{center}
 \small
 \begin{tabular}{@{}l l @{\hspace{1cm}} l l@{}}
 \toprule
-\textbf{Clase} & \textbf{Caracteres} & \textbf{Clase} & \textbf{Caracteres} \\
+\textbf{Class} & \textbf{Characters} & \textbf{Class} & \textbf{Characters} \\
 \midrule
 \cd{L}      & \cd{a--z}, \cd{A--Z}, \cd{\_} & \cd{AMP}   & \cd{\&} \\
 \cd{D}      & \cd{0--9}                     & \cd{BAR}   & \cd{\textbar} \\
 \cd{DOT}    & \cd{.}                        & \cd{ARITH} & \cd{+ - \%} \\
 \cd{QUOTE}  & \cd{"}                        & \cd{PUNCT} & \cd{( ) \{ \} [ ] ; ,} \\
 \cd{APOS}   & \cd{\textquotesingle}         & \cd{HASH}  & \cd{\#} \\
-\cd{BSLASH} & \cd{\textbackslash}           & \cd{WS}    & espacio, tabulador, retorno de carro \\
-\cd{SLASH}  & \cd{/}                        & \cd{NL}    & salto de línea \\
-\cd{STAR}   & \cd{*}                        & \cd{OTHER} & cualquier otro carácter \\
+\cd{BSLASH} & \cd{\textbackslash}           & \cd{WS}    & space, tab, carriage return \\
+\cd{SLASH}  & \cd{/}                        & \cd{NL}    & newline \\
+\cd{STAR}   & \cd{*}                        & \cd{OTHER} & any other character \\
 \cd{EQ}     & \cd{=}                        &            & \\
 \cd{REL}    & \cd{! < >}                    &            & \\
 \bottomrule
+\multicolumn{4}{c}{\vspace{2pt}\footnotesize \textbf{Table 5.} Grouping of ASCII characters into equivalence classes for the DFA.} \\
 \end{tabular}
 \end{center}
-
-\textbf{Tabla de transiciones} $\delta(\text{estado}, \text{clase})$; un guion significa que no hay movimiento:
+\newpage
+\textbf{Transition table} $\delta(\text{state}, \text{class})$; a dash means there is no move:
 
 \begin{table}[H]
 \centering
@@ -454,75 +468,79 @@ $q_{22}$ & $q_{23}$ & $q_{23}$ & $q_{23}$ & $q_{23}$ & $q_{23}$ & $q_{23}$ & $q_
 $q_{23}$ & -- & -- & -- & -- & $q_{24}$ & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- \\
 $q_{24}$ & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- \\
 \bottomrule
+\multicolumn{19}{c}{\vspace{2pt}\footnotesize \textbf{Table 6.} DFA transitions (25 states $\times$ 18 classes).} \\
 \end{tabular}}
-\caption{Tabla de transiciones del AFD (25 estados $\times$ 18 clases)}
 \end{table}
 
-\textbf{Estados finales} ($q_0$, $q_3$, $q_5$, $q_{10}$, $q_{11}$ y $q_{20}$ a $q_{23}$ no son finales):
+\textbf{Final states} ($q_0$, $q_3$, $q_5$, $q_{10}$, $q_{11}$ and $q_{20}$ to $q_{23}$ are not final):
 
 \begin{center}
 \small
 \begin{tabularx}{\textwidth}{@{}l p{4.6cm} X@{}}
 \toprule
-\textbf{Estado final} & \textbf{Lexemas que termina} & \textbf{Regresa} \\
+\textbf{Final state} & \textbf{Lexemes ending here} & \textbf{Returns} \\
 \midrule
-$q_1$ & palabras & el \cd{TokenType} de la tabla de búsqueda; si no está, \cd{ID} \\
+$q_1$ & words & the \cd{TokenType} from the lookup table; if not found, \cd{ID} \\
 $q_2$ & \cd{10} & \cd{INT\_CONST} \\
 $q_4$ & \cd{3.14} & \cd{FLOAT\_CONST} \\
 $q_{24}$ & \cd{\textquotesingle a\textquotesingle}, \cd{\textquotesingle\textbackslash n\textquotesingle} & \cd{CHAR\_CONST} \\
 $q_6$ & \cd{"..."} & \cd{STRING} \\
-$q_7, q_8, q_{12}, q_{13}, q_{14}, q_{15}$ & \cd{+ - * \% / = ! < > == != <= >= \& \&\& \textbar\ \textbar\textbar} & el operador según el lexema (\cd{PLUS}, \cd{EQ}, \cd{AND}\ldots) \\
-$q_{16}$ & \cd{( ) \{ \} [ ] ; ,} & la puntuación según el lexema (\cd{LPAREN}, \cd{SEMI}\ldots) \\
-$q_{17}$ & \cd{\# .} & \cd{HASH} o \cd{DOT} \\
-$q_9, q_{18}$ & \cd{// ...}, \cd{/* ... */} & comentario, se descarta \\
-$q_{19}$ & espacios, tabuladores, saltos de línea & espacio en blanco, se descarta \\
+$q_7, q_8, q_{12}, q_{13}, q_{14}, q_{15}$ & \cd{+ - * \% / = ! < > == != <= >= \& \&\& \textbar\ \textbar\textbar} & the operator according to the lexeme (\cd{PLUS}, \cd{EQ}, \cd{AND}\ldots) \\
+$q_{16}$ & \cd{( ) \{ \} [ ] ; ,} & the punctuation according to the lexeme (\cd{LPAREN}, \cd{SEMI}\ldots) \\
+$q_{17}$ & \cd{\# .} & \cd{HASH} or \cd{DOT} \\
+$q_9, q_{18}$ & \cd{// ...}, \cd{/* ... */} & comment, discarded \\
+$q_{19}$ & spaces, tabs, newlines & whitespace, discarded \\
 \bottomrule
+\multicolumn{3}{c}{\vspace{2pt}\footnotesize \textbf{Table 7.} Mapping of the DFA final states to their corresponding token types and lexemes.} \\
 \end{tabularx}
 \end{center}
 
-\subsection{Consideraciones en el proceso de escaneo}
+\subsection{Scanning Considerations}
 
-Un error léxico ocurre cuando el escaneo se detiene sin haber pasado por un estado final. Para el AFD construido, los principales casos en los que el escaneo puede detenerse sin obtener un token válido son en los siguientes estados:
+A lexical error occurs when scanning stops without having passed through a final state. For the constructed DFA, the main cases in which scanning can stop without producing a valid token occur in the following states:
 
 \begin{center}
 \footnotesize
 \begin{tabularx}{\textwidth}{@{}p{2.4cm} p{3.6cm} p{4.3cm} X@{}}
 \toprule
-\textbf{Estado donde se atora} & \textbf{Qué significa} & \textbf{Mensaje} & \textbf{Recuperación} \\
+\textbf{Stuck state} & \textbf{Meaning} & \textbf{Message} & \textbf{Recovery} \\
 \midrule
-$q_0$ & carácter que no inicia ningún token, como \cd{@} o \cd{\textbackslash} & \cd{Lexical error 1:5: unexpected character \textquotesingle @\textquotesingle} & saltar ese carácter \\
-$q_5$ o $q_{20}$ & cadena sin cerrar en la misma línea & \cd{Lexical error 2:8: unterminated string literal} & saltar al final de la línea \\
-$q_{21}$, $q_{22}$ o $q_{23}$ & constante de carácter mal formada: \cd{\textquotesingle\textquotesingle}, \cd{\textquotesingle ab\textquotesingle} o sin cerrar & \cd{Lexical error 3:10: malformed character constant} & saltar hasta la siguiente \cd{\textquotesingle} de la línea, o al final de la línea \\
-$q_{10}$ o $q_{11}$, al final de la entrada & comentario de bloque sin cerrar (regla 4) & \cd{Lexical error 4:1: unterminated comment} & dejar de escanear \\
+$q_0$ & a character that does not start any token, such as \cd{@} or \cd{\textbackslash} & \cd{Lexical error 1:5: unexpected character \textquotesingle @\textquotesingle} & skip that character \\
+$q_5$ or $q_{20}$ & string not closed on the same line & \cd{Lexical error 2:8: unterminated string literal} & skip to the end of the line \\
+$q_{21}$, $q_{22}$ or $q_{23}$ & malformed character constant: \cd{\textquotesingle\textquotesingle}, \cd{\textquotesingle ab\textquotesingle}, or unclosed & \cd{Lexical error 3:10: malformed character constant} & skip to the next \cd{\textquotesingle} on the line, or to the end of the line \\
+$q_{10}$ or $q_{11}$, at the end of the input & unclosed block comment (rule 4) & \cd{Lexical error 4:1: unterminated comment} & stop scanning \\
 \bottomrule
+\multicolumn{4}{c}{\vspace{2pt}\footnotesize \textbf{Table 8.} Lexical error handling.} \\
 \end{tabularx}
 \end{center}
 
-En $q_3$ no hay error: \cd{5.} siempre tiene antes el estado final $q_2$, así que se emite \cd{5} y se vuelve a escanear desde \cd{.}. La recuperación del carácter salta hasta la siguiente comilla para que \cd{\textquotesingle ab\textquotesingle} no se convierta en un identificador falso más otro error.
+There is no error in $q_3$: \cd{5.} is always preceded by the final state $q_2$, so \cd{5} is emitted and scanning restarts from \cd{.}. Recovery for character constants skips to the next quote so that \cd{\textquotesingle ab\textquotesingle} does not turn into a spurious identifier plus another error.
 
 %=====================================================================
-\section{Diagramas del proceso del lexer}
-El diagrama de flujo muestra cómo los errores y los elementos descartados regresan al inicio del ciclo sin agregar tokens. La ejecución del Lexer se realiza en 5 etapas mostradas en el siguiente gráfico.
+\newpage
+\section{Lexer Process Diagrams}
+The flowchart shows how errors and discarded elements return to the start of the loop without adding tokens. The Lexer runs in 5 stages, shown in the following figure.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.85\textwidth]{etapas.png}
-    \caption{Etapas del lexer · 5 etapas}
+    \caption{Lexer stages}
 \end{figure}
 
-\subsection{Ciclo de escaneo}
+\newpage
+\subsection{Scanning Loop}
 
-En la siguiente imagen se muestra un diagrama de flujo del proceso scan del Lexer.
+The following figure shows a flowchart of the Lexer's scan process.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.85\textwidth]{flujo-escaneo.png}
-    \caption{Diagrama de flujo del escaneo}
+    \caption{Scanning flowchart}
 \end{figure}
 
-Cada vuelta del ciclo consume un lexema; los errores y los elementos descartados regresan al inicio sin agregar tokens.
+Each iteration of the loop consumes one lexeme; errors and discarded elements return to the start without adding tokens.
 
-La construcción de este diagrama se obtuvo a partir del pseudocódigo; if es un rombo de decisión, así mismo, cada grupo de instrucciones a una caja.
+This diagram was derived from the pseudocode: each if becomes a decision diamond, and each group of instructions becomes a box.
 
 \begin{lstlisting}
 while pos < len(text):
@@ -537,16 +555,104 @@ while pos < len(text):
     if lastFinal == none:
         errors.report(line, col, state); pos = recover(pos, state); continue
     lexeme = text[pos : lastEnd]
-    kind = classify(lastFinal, lexeme)   # aquí se consulta la tabla de búsqueda
+    kind = classify(lastFinal, lexeme)   # the lookup table is queried here
     if kind not in {WHITESPACE, COMMENT}:
         tokens.add(kind, lexeme, line, col)
     advanceLineCol(lexeme); pos = lastEnd
 \end{lstlisting}
 
 %=====================================================================
+\section{Lexical Analyzer Tests}
+
+The tests were run with the analyzer from the command line using \cd{python main.py --text "..."}. The output has three parts: a line with the class of each token in order, one \cd{Class: lexeme} line per token, and the total number of tokens (\cd{Total of tokens: N}). Lexical errors are printed at the end in the format \cd{Lexical error line:column: message} and are not counted as tokens. Comments and whitespace are discarded, so they do not appear in the output. Inner double quotes are written as \cd{\textbackslash"} because the string is enclosed in quotes on the console.
+
+\subsection{T1. Valid Case: Declaration, Strings, and Operator}
+
+Input with a declaration, two calls with strings, and the \cd{\&} operator:
+
+\begin{lstlisting}
+unam.fi.compilers.g5.06>python main.py --text "int number; printf(\"Enter a number:\");  scanf(\"%d\", &number); "
+keyword identifier punctuation identifier punctuation literal punctuation punctuation identifier punctuation literal punctuation operator identifier punctuation punctuation
+Keyword: int
+Identifier: number
+Punctuation: ;
+Identifier: printf
+Punctuation: (
+Literal: "Enter a number:"
+Punctuation: )
+Punctuation: ;
+Identifier: scanf
+Punctuation: (
+Literal: "%d"
+Punctuation: ,
+Operator: &
+Identifier: number
+Punctuation: )
+Punctuation: ;
+Total of tokens: 16
+\end{lstlisting}
+
+Note that \cd{int} is output as a keyword and \cd{number} as an identifier (rule 2). \cd{printf} shows maximal munch at work (rule 1): although \cd{print} is a keyword, the longest lexeme ending in $q_1$ is \cd{printf}, which is not in the lookup table and is classified as \cd{ID}. The strings \cd{"Enter a number:"} and \cd{"\%d"} end in $q_6$ and are emitted in full, including their quotes. The isolated \cd{\&} ends in $q_{14}$ and is a single-character operator, because it is not followed by another \cd{\&}.
+
+\subsection{T2. Comments, Decimals, and Keywords}
+
+Input with a decimal, a block comment, a string, and a line comment:
+
+\begin{lstlisting}
+unam.fi.compilers.g5.06>python main.py --text "float x = 3.14; /* bloque */ print(\"Hola\"); // fin"
+keyword identifier operator constant punctuation keyword punctuation literal punctuation punctuation
+Keyword: float
+Identifier: x
+Operator: =
+Constant: 3.14
+Punctuation: ;
+Keyword: print
+Punctuation: (
+Literal: "Hola"
+Punctuation: )
+Punctuation: ;
+Total of tokens: 10
+\end{lstlisting}
+
+The block comment (ending in $q_{18}$), the line comment (ending in $q_9$), and the whitespace ($q_{19}$) are recognized with the same rules as tokens but are discarded, so they do not appear in the output. The decimal \cd{3.14} ends in $q_4$ and is emitted as a constant.
+
+\subsection{T3. Error Case: Malformed Character Constant}
+
+Input with a single quote that is never closed:
+
+\begin{lstlisting}
+unam.fi.compilers.g5.06>python main.py --text "int number = 'a; printf(\"Enter a number:\");  scanf(\"%d\", &number); "
+keyword identifier operator
+Keyword: int
+Identifier: number
+Operator: =
+Total of tokens: 3
+Lexical error 1:14: malformed character constant
+\end{lstlisting}
+
+The DFA reads \cd{\textquotesingle a} and reaches $q_{23}$, but the next character is \cd{;}, and from $q_{23}$ there is only a transition on \cd{\textquotesingle}. Scanning stops without having passed through a final state, so the error is reported at line 1, column 14 (the position of the quote), with the message from Table 8 for $q_{21}$, $q_{22}$ and $q_{23}$. Recovery skips to the next \cd{\textquotesingle} on the line or, if there is none, to the end of the line. Here there is no other single quote, so the rest of the line is discarded, which is why only the three tokens before the error are emitted.
+
+\subsection{T4. Input for the Parser}
+
+Input with the declaration used in the CFG section:
+
+\begin{lstlisting}
+unam.fi.compilers.g5.06>python main.py --text "int a = 10;"
+keyword identifier operator constant punctuation
+Keyword: int
+Identifier: a
+Operator: =
+Constant: 10
+Punctuation: ;
+Total of tokens: 5
+\end{lstlisting}
+
+The five tokens correspond to \cd{INT}, \cd{ID}, \cd{ASSIGN}, \cd{INT\_CONST} and \cd{SEMI}, which are the terminals \cd{int}, \cd{id}, \cd{=}, \cd{num} and \cd{;} of grammar $G_1$.
+
+%=====================================================================
 \section{CFG}
 
-A continuacón se presenta la Gramática Libre de Contexto $G_0 = (N, T, P, S)$ para la declaración, con $N = \{\text{Decl}, \text{Type}, \text{Value}\}$, $T = \{\texttt{int}, \texttt{float}, \texttt{char}, \texttt{id}, \texttt{num}, \texttt{=}, \texttt{;}\}$ y $S = \text{Decl}$.
+The following is the Context-Free Grammar $G_0 = (N, T, P, S)$ for the declaration, with $N = \{\text{Decl}, \text{Type}, \text{Value}\}$, $T = \{\texttt{int}, \texttt{float}, \texttt{char}, \texttt{id}, \texttt{num}, \texttt{=}, \texttt{;}\}$ and $S = \text{Decl}$.
 
 \begin{align*}
 &1.\ \text{Decl} \rightarrow \text{Type}\ \texttt{id}\ \texttt{;} \\
@@ -555,9 +661,9 @@ A continuacón se presenta la Gramática Libre de Contexto $G_0 = (N, T, P, S)$ 
 &4.\ \text{Value} \rightarrow \texttt{num} \mid \texttt{id}
 \end{align*}
 
-Se eligió una declaración de variable porque permite mostrar un caso de producciones con prefijo común con el fin de aplicar producciones por left factoring.
+A variable declaration was chosen because it shows a case of productions with a common prefix, which allows left factoring to be applied.
 
-Se tomó la secuencia de tokens \cd{int id = num ;} y se escribió una producción por cada forma de la declaración sin valor y con valor. Los terminales son tokens del siguiente catálogo:
+The token sequence \cd{int id = num ;} was taken, and one production was written for each form of the declaration: without a value and with a value. The terminals are tokens from the following catalog:
 
 \begin{center}
 \small
@@ -574,13 +680,13 @@ Se tomó la secuencia de tokens \cd{int id = num ;} y se escribió una producci�
 \end{tabular}
 \end{center}
 
-Existe una consideración para la generación de LL(1). Las producciones 1 y 2 comparten el prefijo \cd{Type id}. Después de leer \cd{int a}, otro tippo de analizador no tendría esta consideración, por consecuencia, no sabría cuál aplicar, por lo tanto, en una tabla LL(1) ambas caerían en la celda $[\text{Decl}, \texttt{int}]$.
+There is one consideration for building the LL(1) parser. Productions 1 and 2 share the prefix \cd{Type id}. After reading \cd{int a}, a parser that does not account for this would not know which production to apply; therefore, in an LL(1) table both would fall into the cell $[\text{Decl}, \texttt{int}]$.
 
 
 %=====================================================================
 \section{Left factoring}
 
-Se factorizó el prefijo común de $G_0$ y se verificó que el resultado, $G_1$, es LL(1). Así mismo, se buscó el prefijo común más largo de las dos producciones de Decl: $\alpha = \text{Type}\ \texttt{id}$. Lo que sigue en cada una es $\beta_1 = \texttt{;}$ y $\beta_2 = \texttt{=}\ \text{Value}\ \texttt{;}$. Se aplicó la regla vista en clase.
+The common prefix of $G_0$ was factored out, and the result, $G_1$, was verified to be LL(1). To do so, the longest common prefix of the two Decl productions was identified: $\alpha = \text{Type}\ \texttt{id}$. What follows in each one is $\beta_1 = \texttt{;}$ and $\beta_2 = \texttt{=}\ \text{Value}\ \texttt{;}$. The rule seen in class was applied.
 
 \[A \to \alpha\beta_1 \mid \alpha\beta_2 \quad\Longrightarrow\quad A \to \alpha A', \qquad A' \to \beta_1 \mid \beta_2\]
 
@@ -591,26 +697,30 @@ Se factorizó el prefijo común de $G_0$ y se verificó que el resultado, $G_1$,
 &4.\ \text{Value} \rightarrow \texttt{num} \mid \texttt{id}
 \end{align*}
 
-La gramática resultante no presenta left factoring y elimina el prefijo común de las producciones de Decl. Posteriormente se verificó mediante FIRST, FOLLOW y la tabla predictiva que no presenta conflictos para este ejemplo.
+The factored grammar is $G_1 = (N', T, P', S)$, with $N' = \{\text{Decl}, \text{Decl}', \text{Type}, \text{Value}\}$, the same terminal set $T$ as $G_0$, the start symbol $S = \text{Decl}$, and $P'$ made up of the productions above. $N'$ includes the new nonterminal $\text{Decl}'$ introduced by the factoring.
 
-\subsection{FIRST, FOLLOW, tabla LL(1) y traza.}
+The resulting grammar no longer requires left factoring, since the common prefix of the Decl productions has been removed. It was then verified through FIRST, FOLLOW, and the predictive table that it has no conflicts for this example.
 
-En la siguiente tabla se muestra el resultado de las operaciones First y Follow para la gramática.
+\subsection{FIRST, FOLLOW, LL(1) Table, and Trace.}
+
+The following table shows the result of the FIRST and FOLLOW operations for the grammar.
 
 \begin{center}
 \small
 \begin{tabular}{@{}l l l@{}}
 \toprule
-\textbf{No terminal} & \textbf{FIRST} & \textbf{FOLLOW} \\
+\textbf{Nonterminal} & \textbf{FIRST} & \textbf{FOLLOW} \\
 \midrule
 Decl & $\{\texttt{int}, \texttt{float}, \texttt{char}\}$ & $\{\$\}$ \\
 Decl$'$ & $\{\texttt{;}, \texttt{=}\}$ & $\{\$\}$ \\
 Type & $\{\texttt{int}, \texttt{float}, \texttt{char}\}$ & $\{\texttt{id}\}$ \\
 Value & $\{\texttt{num}, \texttt{id}\}$ & $\{\texttt{;}\}$ \\
 \bottomrule
+\multicolumn{3}{c}{\vspace{2pt}\footnotesize \textbf{Table 9.} FIRST and FOLLOW sets computed for grammar $G_1$.} \\
 \end{tabular}
 \end{center}
 
+The LL(1) table is defined below.
 \begin{table}[H]
 \centering
 \scriptsize
@@ -625,15 +735,16 @@ Decl$'$ & & & & & & $\text{Decl}'\to\texttt{=}\ \text{Value}\ \texttt{;}$ & $\te
 Type  & $\text{Type}\to\texttt{int}$ & $\text{Type}\to\texttt{float}$ & $\text{Type}\to\texttt{char}$ & & & & & \\
 Value & & & & $\text{Value}\to\texttt{id}$ & $\text{Value}\to\texttt{num}$ & & & \\
 \bottomrule
+\multicolumn{9}{c}{\vspace{2pt}\footnotesize \textbf{Table 10.} LL(1) predictive parsing table for grammar $G_1$.} \\
 \end{tabular}}
 \end{table}
-Cada celda tiene a lo más una producción, así que $G_1$ es LL(1). Traza de \cd{int id = num ;}, con el tope de la pila a la derecha como en clase:
+Each cell contains at most one production, so $G_1$ is LL(1). Trace of \cd{int id = num ;}, with the top of the stack on the right, as in class:
 
 \begin{center}
 \small
 \begin{tabular}{@{}r l l l@{}}
 \toprule
-\textbf{Paso} & \textbf{Pila} & \textbf{Entrada} & \textbf{Acción} \\
+\textbf{Step} & \textbf{Stack} & \textbf{Input} & \textbf{Action} \\
 \midrule
 1  & \texttt{\$ Decl}            & \texttt{int id = num ; \$} & $\text{Decl} \to \text{Type}\ \texttt{id}\ \text{Decl}'$ \\
 2  & \texttt{\$ Decl' id Type}   & \texttt{int id = num ; \$} & $\text{Type} \to \texttt{int}$ \\
@@ -644,19 +755,31 @@ Cada celda tiene a lo más una producción, así que $G_1$ es LL(1). Traza de \c
 7  & \texttt{\$ ; Value}         & \texttt{num ; \$}          & $\text{Value} \to \texttt{num}$ \\
 8  & \texttt{\$ ; num}           & \texttt{num ; \$}          & match \texttt{num} \\
 9  & \texttt{\$ ;}               & \texttt{; \$}              & match \texttt{;} \\
-10 & \texttt{\$}                 & \texttt{\$}                & éxito \\
+10 & \texttt{\$}                 & \texttt{\$}                & accept \\
 \bottomrule
+\multicolumn{4}{c}{\vspace{2pt}\footnotesize \textbf{Table 11.} Predictive parsing trace for the string \cd{int id = num ;}} \\
 \end{tabular}
 \end{center}
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.85\textwidth]{arbol-sintactico.png}
-    \caption{Árbol sintáctico de \texttt{int a = 10;} · gramática $G_1$}
+    \caption{Parse tree of \texttt{int a = 10;} · grammar $G_1$}
 \end{figure}
 
-Las hojas del árbol son los tokens \cd{INT}, \cd{ID}, \cd{ASSIGN}, \cd{INT\_CONST} y \cd{SEMI}: exactamente la salida del lexer para T2.
+The leaves of the tree are the tokens \cd{INT}, \cd{ID}, \cd{ASSIGN}, \cd{INT\_CONST} and \cd{SEMI}: exactly the lexer output for test T4 (Lexical Analyzer Tests section).
 
 %=====================================================================
+\newpage
+%=====================================================================
+\section{Conclusions}
+This project delivered a lexical analyzer built from the definition of the grammars all the way to its implementation. A list of 45 tokens grouped into keywords, identifiers, constants, literals, operators, punctuation, and special characters was the first design step; regular expressions were also designed for these tokens. The regular expressions were translated into an NFA of nine sub-automata joined by $\varepsilon$-transitions. This automaton was then converted into a 25-state deterministic automaton using the $\varepsilon$-closure and \textit{move} techniques.
+
+The maximal munch rule, with backtracking to the last final state visited, resolves most ambiguities. Keywords and booleans did not need states of their own, because they are recognized as identifiers and classified with a lookup table. Treating \cd{+} and \cd{-} as independent operators avoids ambiguities in expressions such as \cd{a-1}. The only real nondeterminism in the language, the \cd{/} character, which can either start a comment or be an operator, was resolved in state $q_8$. The unclosed block comment exception prevents the scanner from backing up and reporting a \cd{/} instead of the actual error.
+
+Lexical error handling with panic-mode recovery keeps the analyzer from stopping at the first problem. It reports the line and column and continues with the rest of the input. The staged architecture (reading, preprocessing, scanning, classification, and output), together with a symbol table and an error handler, separates responsibilities and makes it easier to modify each part independently.
+
+Finally, the CFG for variable declarations, with its \textit{left factoring}, FIRST and FOLLOW sets, and LL(1) table, showed how the lexical analyzer feeds the parser. The leaves of the tree for \cd{int a = 10;} are exactly the tokens produced by the lexer, which confirms that both phases are properly connected. As future work, the lexer could be extended with scientific notation, compound operators (\cd{++}, \cd{+=}), or nested comments, and the type of each identifier could be filled in the symbol table during semantic analysis.
+
 
 \end{document}
