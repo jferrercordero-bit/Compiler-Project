@@ -1,6 +1,6 @@
 # unam.fi.compilers.g5.06 — Lexer, Parser, and SDT
 
-A compiler for a subset of C, developed for the Compilers course (Group 5, UNAM Faculty of Engineering). It has two phases implemented using the theory covered in class, without FLEX or libraries for regular expressions or parsing.
+A compiler for a subset of C, developed for the Compilers course (Group 5 UNAM FI). It has two phases implemented using the theory covered in class, without FLEX or libraries for regular expressions or parsing.
 
 1. **Lexer:** regular expressions → NFA → 25-state DFA → transition table.
 2. **Parser and SDT:** LL(1) grammar with 27 productions → FIRST and FOLLOW sets → LL(1) table → stack-based predictive parser that builds the parse tree → SDT rules for type checking and declarations.
