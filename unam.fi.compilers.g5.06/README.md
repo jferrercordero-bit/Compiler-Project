@@ -7,7 +7,7 @@ A compiler for a subset of C, developed for the Compilers course (Group 5, UNAM 
 
 Requires Python 3.10 or later. There are no external dependencies.
 
-## Parser y SDT
+## Parser & SDT
 
 ```bash
 python parse.py --text "int x = 10;"
