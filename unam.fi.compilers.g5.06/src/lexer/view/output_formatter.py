@@ -1,4 +1,4 @@
-"""Output format required in the assignment: sequence, one line per token and total."""
+"""Formato de salida pedido en la práctica: secuencia, una línea por token y total."""
 
 from ..controller.lexer_controller import LexResult
 

@@ -1,11 +1,11 @@
-"""Symbol table implementation with lookup and insert operations."""
+"""Tabla de símbolos con las operaciones insert() y lookup() vistas en clase."""
 
 from dataclasses import dataclass, field
 
 
 @dataclass
 class SymbolEntry:
-    # The lexer only knows the name and lines; the remaining fields are filled in during later phases..
+    # El lexer solo conoce el nombre y las líneas; el resto lo llenan fases posteriores.
     name: str
     type: str = "TBD"
     size: str = "TBD"
@@ -27,7 +27,7 @@ class SymbolTable:
         return entry
 
     def record(self, name: str, line: int) -> SymbolEntry:
-        """Looks up an identifier, inserts it if necessary, and records the line where it appears."""
+        """Busca el identificador; si no existe lo inserta, si existe agrega la línea."""
         entry = self.lookup(name)
         if entry is None:
             return self.insert(name, line)

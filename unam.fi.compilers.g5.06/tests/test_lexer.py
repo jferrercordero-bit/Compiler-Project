@@ -1,6 +1,6 @@
 """Automated tests for the lexer.
 
-Execute from the repository root:
+Run from the repository root:
     python -m unittest discover -s tests -v
 """
 
@@ -40,7 +40,7 @@ def types(result):
 
 
 class ReadingExamples(unittest.TestCase):
-    """T1 to T8: test cases from the assignment and the report."""
+    """T1 through T8 cover examples from the assignment and the original report."""
 
     def test_t1_printf_example(self):
         r = lex('printf("This is an example");')
@@ -50,6 +50,7 @@ class ReadingExamples(unittest.TestCase):
     def test_t2_declaration_example(self):
         r = lex("int a = 10;")
         self.assertEqual(stream(r), "keyword identifier operator constant punctuation")
+        # Los terminales de G1: int id = num ;
         self.assertEqual(types(r), [TokenType.INT, TokenType.ID, TokenType.ASSIGN,
                                     TokenType.INT_CONST, TokenType.SEMI])
 
@@ -89,7 +90,7 @@ class ReadingExamples(unittest.TestCase):
 
 
 class NewTokenKinds(unittest.TestCase):
-    """T9 to T13: chars, booleans, escapes and full catalog."""
+    """T9 through T13 cover character constants, booleans, escape sequences, and the full token catalog."""
 
     def test_t9_char_constant(self):
         r = lex("char c = 'a';")
@@ -119,7 +120,7 @@ class NewTokenKinds(unittest.TestCase):
 
 
 class PriorityRules(unittest.TestCase):
-    """Test for the five Priority rules."""
+    """Tests for the five token priority rules in Section 3."""
 
     def test_rule1_longest_match(self):
         r = lex("a<=b==c!=d&&e||f")
@@ -188,6 +189,7 @@ class ErrorsAndPositions(unittest.TestCase):
         self.assertEqual(r.symbols.lookup("x").type, "TBD")
 
     def test_empty_symbol_table_is_used(self):
+        # Regresión: una SymbolTable vacía es falsa; el escáner debe usar la que recibe.
         from lexer.model.scanner import Scanner
         table = SymbolTable()
         Scanner(symbols=table).scan("abc")
@@ -195,7 +197,7 @@ class ErrorsAndPositions(unittest.TestCase):
 
 
 class ModelIntegrity(unittest.TestCase):
-    """Verifies that the code is consistent with the Model Designer's specification."""
+    """Checks the token catalog, transition table, and character classes against the design."""
 
     def test_catalog_has_45_types_numbered_in_order(self):
         self.assertEqual([t.number for t in TokenType], list(range(1, 46)))
@@ -218,6 +220,7 @@ class ModelIntegrity(unittest.TestCase):
             self.assertEqual(char_class(ch), cls)
 
     def test_no_regex_library_is_used(self):
+        # Opción teórica de la práctica (puntos extra): ni FLEX ni bibliotecas de regex.
         for source in (ROOT / "src").rglob("*.py"):
             text = source.read_text(encoding="utf-8")
             self.assertNotIn("import re", text, source.name)

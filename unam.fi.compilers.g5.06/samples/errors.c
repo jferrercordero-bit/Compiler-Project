@@ -1,4 +1,4 @@
 int @a = 10;
 char c = 'ab';
-printf("unclosed string);
-x = 1; /* comment not closed
+printf("sin cerrar);
+x = 1; /* comentario sin cerrar

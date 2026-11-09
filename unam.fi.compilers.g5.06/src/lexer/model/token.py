@@ -1,4 +1,4 @@
-"""Represents a recognized token with its type, lexeme, and starting position."""
+"""Un token reconocido: tipo, lexema y posición donde empieza."""
 
 from dataclasses import dataclass
 

@@ -1,10 +1,10 @@
-"""Definition of the token types and their classes. The classes are used to group the types in the output."""
+"""Catálogo de los 45 tipos de token (sección 2 del Entregable del Model Designer)."""
 
 from enum import Enum
 
 
 class TokenClass(Enum):
-    """The 7 classes seen during class. The value is the label that is printed."""
+    """Las 7 clases vistas en clase. El valor es la etiqueta que se imprime."""
 
     KEYWORD = "keyword"
     IDENTIFIER = "identifier"
@@ -16,12 +16,12 @@ class TokenClass(Enum):
 
     @property
     def label(self) -> str:
-        """Label in lowercase, for the line with the sequence of tokens."""
+        """Etiqueta en minúsculas, para la línea con la secuencia de tokens."""
         return self.value
 
     @property
     def title(self) -> str:
-        """Label with initial uppercase, for the lines 'Class: lexeme'."""
+        """Etiqueta con mayúscula inicial, para las líneas 'Class: lexeme'."""
         return self.value.capitalize()
 
 
@@ -35,7 +35,7 @@ _S = TokenClass.SPECIAL
 
 
 class TokenType(Enum):
-    """Each type keeps its number in the catalog and its class."""
+    """Cada tipo guarda su número en el catálogo y su clase."""
 
     INT = (1, _K)
     FLOAT = (2, _K)

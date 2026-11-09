@@ -1,46 +1,44 @@
-"""Assigns a TokenType to a lexeme based on the final state of the DFA."""
+"""Asigna el TokenType según el estado final y el lexema (secciones 2 y 5.3)."""
 
-from .token_type import TokenType
+from .token_type import TokenType as T
 
-# Lookup table: maps lexemes that end in q1 to their corresponding token types.
+# Tabla de búsqueda: se consulta solo para lexemas que terminan en q1.
 LOOKUP = {
-    "int": TokenType.INT, "float": TokenType.FLOAT, "char": TokenType.CHAR, "double": TokenType.DOUBLE,
-    "void": TokenType.VOID, "return": TokenType.RETURN, "if": TokenType.IF, "else": TokenType.ELSE,
-    "while": TokenType.WHILE, "for": TokenType.FOR, "print": TokenType.PRINT,
-    "true": TokenType.TRUE, "false": TokenType.FALSE
+    "int": T.INT, "float": T.FLOAT, "char": T.CHAR, "double": T.DOUBLE,
+    "void": T.VOID, "return": T.RETURN, "if": T.IF, "else": T.ELSE,
+    "while": T.WHILE, "for": T.FOR, "print": T.PRINT,
+    "true": T.TRUE, "false": T.FALSE,
 }
 
 OPERATORS = {
-    "+": TokenType.PLUS, "-": TokenType.MINUS, "*": TokenType.STAR, "/": TokenType.SLASH, "%": TokenType.PERCENT,
-    "=": TokenType.ASSIGN, "==": TokenType.EQ, "!": TokenType.NOT, "!=": TokenType.NEQ,
-    "<": TokenType.LT, "<=": TokenType.LE, ">": TokenType.GT, ">=": TokenType.GE,
-    "&": TokenType.AMP, "&&": TokenType.AND, "|": TokenType.BAR, "||": TokenType.OR
+    "+": T.PLUS, "-": T.MINUS, "*": T.STAR, "/": T.SLASH, "%": T.PERCENT,
+    "=": T.ASSIGN, "==": T.EQ, "!": T.NOT, "!=": T.NEQ,
+    "<": T.LT, "<=": T.LE, ">": T.GT, ">=": T.GE,
+    "&": T.AMP, "&&": T.AND, "|": T.BAR, "||": T.OR,
 }
 
 PUNCTUATION = {
-    "(": TokenType.LPAREN, ")": TokenType.RPAREN, "{": TokenType.LBRACE, "}": TokenType.RBRACE,
-    "[": TokenType.LBRACKET, "]": TokenType.RBRACKET, ";": TokenType.SEMI, ",": TokenType.COMMA
+    "(": T.LPAREN, ")": T.RPAREN, "{": T.LBRACE, "}": T.RBRACE,
+    "[": T.LBRACKET, "]": T.RBRACKET, ";": T.SEMI, ",": T.COMMA,
 }
 
-SPECIALS = {"#": TokenType.HASH, ".": TokenType.DOT}
+SPECIALS = {"#": T.HASH, ".": T.DOT}
 
-# Final states that correspond to lexemes that should be discarded (not returned as tokens).
-DISCARDED_STATES = {"q9", "q18", "q19"}
+# Estados finales cuyo lexema se reconoce pero no es token (regla 3 de prioridad).
+DISCARDED_STATES = frozenset({"q9", "q18", "q19"})
 
-_OPERATOR_STATES = {"q7", "q8", "q12", "q13", "q14", "q15"}
-_FIXED = {"q2": TokenType.INT_CONST, "q4": TokenType.FLOAT_CONST, 
-          "q24": TokenType.CHAR_CONST, "q6": TokenType.STRING
-}
+_OPERATOR_STATES = frozenset({"q7", "q8", "q12", "q13", "q14", "q15"})
+_FIXED = {"q2": T.INT_CONST, "q4": T.FLOAT_CONST, "q24": T.CHAR_CONST, "q6": T.STRING}
 
 
 class TokenClassifier:
-    def classify(self, final_state: str, lexeme: str) -> TokenType | None:
-        """Returns the TokenType, or None if the lexeme is discarded."""
+    def classify(self, final_state: str, lexeme: str) -> T | None:
+        """Devuelve el TokenType, o None si el lexema se descarta."""
         if final_state in DISCARDED_STATES:
             return None
         if final_state == "q1":
-            # Priority rule 2: the lookup table takes precedence over identifiers.
-            return LOOKUP.get(lexeme, TokenType.ID)
+            # Regla 2 de prioridad: la tabla gana sobre identificador.
+            return LOOKUP.get(lexeme, T.ID)
         if final_state in _FIXED:
             return _FIXED[final_state]
         if final_state in _OPERATOR_STATES:
@@ -49,4 +47,4 @@ class TokenClassifier:
             return PUNCTUATION[lexeme]
         if final_state == "q17":
             return SPECIALS[lexeme]
-        raise ValueError(f"{final_state} is not a valid final state for lexeme '{lexeme}'")
+        raise ValueError(f"{final_state} no es un estado final")

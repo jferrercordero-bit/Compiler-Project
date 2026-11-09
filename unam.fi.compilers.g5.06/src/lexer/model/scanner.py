@@ -1,4 +1,4 @@
-"""Lexical scanner implementation."""
+"""Ciclo de escaneo por máximo bocado (secciones 3 y 6.2 del Model Designer)."""
 
 from .char_class import char_class
 from .error_handler import COMMENT_STATES, ErrorHandler
@@ -10,7 +10,7 @@ from .transition_table import START, TransitionTable
 
 
 def _advance(text: str, start: int, end: int, line: int, column: int) -> tuple[int, int]:
-    """Update line and column numbers after consuming text[start:end]."""
+    """Actualiza línea y columna con los caracteres consumidos, incluidos los descartados."""
     for ch in text[start:end]:
         if ch == "\n":
             line, column = line + 1, 1
@@ -27,7 +27,7 @@ class Scanner:
         symbols: SymbolTable | None = None,
         classifier: TokenClassifier | None = None,
     ) -> None:
-        # "is None" and not "or": an empty SymbolTable is false due to its __len__ method.
+        # "is None" y no "or": una SymbolTable vacía es falsa por su __len__.
         self.table = TransitionTable() if table is None else table
         self.errors = ErrorHandler() if errors is None else errors
         self.symbols = SymbolTable() if symbols is None else symbols
@@ -38,7 +38,7 @@ class Scanner:
         pos, line, column = 0, 1, 1
         n = len(text)
         while pos < n:
-            # Go through the DFA keeping the last final state visited.
+            # Recorrer el AFD guardando el último estado final visitado (regla 1).
             state, i = START, pos
             last_final, last_end = None, pos
             while i < n:
@@ -49,12 +49,13 @@ class Scanner:
                 if self.table.is_final(state):
                     last_final, last_end = state, i
 
-            # Rule 4: the input ended inside an unterminated block comment.
+            # Regla 4: la entrada se acabó dentro de un comentario de bloque.
+            # No se retrocede al "/" de q8; se reporta y se deja de escanear.
             if i == n and state in COMMENT_STATES:
                 self.errors.report(line, column, state, text[pos])
                 break
 
-            # Rule 5: there is no valid token if no final state was reached.
+            # Regla 5: sin estado final no hay token.
             if last_final is None:
                 self.errors.report(line, column, state, text[pos])
                 resume = self.errors.recover(text, pos, state)
@@ -62,10 +63,10 @@ class Scanner:
                 pos = resume
                 continue
 
-            # Extract the lexeme up to the last final state.
+            # Cortar el lexema en el último estado final (retroceso).
             lexeme = text[pos:last_end]
             kind = self.classifier.classify(last_final, lexeme)
-            if kind is not None:  # Skip whitespace and comments.
+            if kind is not None:  # espacios y comentarios se descartan (regla 3)
                 tokens.append(Token(kind, lexeme, line, column))
                 if kind is TokenType.ID:
                     self.symbols.record(lexeme, line)

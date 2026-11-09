@@ -1,55 +1,66 @@
-# unam.fi.compilers.g5.06 — Lexical Analyzer
+# unam.fi.compilers.g5.06 — Lexer, Parser, and SDT
 
-Lexer for a subset of the C language, developed for the Compilers course (Group 5, FI UNAM).
-The program was built using only the concepts seen in class: regex → NFA → DFA →
-transition table. It does not use FLEX or any regex libraries either.
+A compiler for a subset of C, developed for the Compilers course (Group 5, UNAM Faculty of Engineering). It has two phases implemented using the theory covered in class, without FLEX or libraries for regular expressions or parsing.
 
+1. **Lexer:** regular expressions → NFA → 25-state DFA → transition table.
+2. **Parser and SDT:** LL(1) grammar with 27 productions → FIRST and FOLLOW sets → LL(1) table → stack-based predictive parser that builds the parse tree → SDT rules for type checking and declarations.
 
-## Quick start
+Requires Python 3.10 or later. There are no external dependencies.
 
-Requirements: Python 3.10 or later. No additional dependences are required.
+## Parser y SDT
+
+```bash
+python parse.py --text "int x = 10;"
+python parse.py --file samples/parser/valid_program.c --tree --symbols
+python parse.py --file samples/parser/example.c --trace
+```
+
+Output for `int x = 10;`
+
+```
+Input tokens:
+  1: int id = num ;
+Parsing Success!
+SDT Verified!
+```
+
+The other two possible outcomes are shown below.
+
+```
+Parsing error...                     Parsing Success!
+SDT error...                         SDT error...
+error in line 1: missing ';' ...     error in line 3: type mismatch: 'x' is int but the value is float
+```
+
+The `--trace` option shows the LL(1) parsing trace, including the stack, remaining input, and action. The `--tree` option shows the parse tree annotated with SDT attributes, and `--symbols` shows the symbol table with types, sizes, and addresses.
+
+The program exits with code 0 if both parsing and SDT verification succeed, and with code 1 otherwise.
+
+## Lexer
 
 ```bash
 python main.py --text "int a = 10;"
-python main.py --file samples/example1.c
 python main.py --file samples/class_example.c --detail
 ```
 
-Output for `int a = 10;`:
+The lexer recognizes 45 token types across 7 categories and skips whitespace and comments.
+
+## Project Structure
 
 ```
-keyword identifier operator constant punctuation
-Keyword: int
-Identifier: a
-Operator: =
-Constant: 10
-Punctuation: ;
-Total of tokens: 5
-```
-
-Without `--text` or `--file`, the program reads from the standard input. With `--detail`  the output shows the TokenType, its line and column, and the symbol table as well.
-The program exits with code 1 if there are any lexical errors, 0 otherwise.
-
-## What it recognizes
-
-45 token types divided into 7 classes: keyword, identifier, constant (integers,
-floats, characters and booleans), literal (string with escapes), operator, punctuation
-and special characters. Whitespaces and comments are recognized and discarded.
-Lexical errors are reported with the line and column and the scanning continues afterward.
-
-## Structure
-
-```
-main.py                         entry point
-src/lexer/
-  data/transition_table.csv     25 state-DFA × 18 classes (design by the Model Designer)
-  model/                        token_type, token, char_class, transition_table,
-                                preprocessor, scanner, token_classifier,
-                                symbol_table, error_handler
+main.py                         Lexer entry point
+parse.py                        Parser and SDT entry point
+src/lexer/                      DFA, transition table, symbol table, and lexical errors
+src/parser/
+  data/grammar.txt              Grammar with 27 productions (Model Designer)
+  data/ll1_table.csv             LL(1) table (Model Designer)
+  model/                        grammar, ll1_table, token_adapter, ll1_parser,
+                                parse_tree, type_system, sdt
   view/                         input_reader, output_formatter
-  controller/                   lexer_controller
-samples/                        input examples, class program, 45 tokens, errors
-tests/test_lexer.py             33 automated tests
+  controller/                   parser_controller (lexer → parser → SDT)
+samples/                        Lexer input samples
+samples/parser/                 Parser input samples: valid input, syntax error, and SDT errors
+tests/                          71 automated tests (33 for the lexer and 38 for the parser)
 ```
 
 ## Tests
@@ -67,3 +78,4 @@ python -m unittest discover -s tests -v
 | Developer | González Casimiro Juan Carlos |
 | Writer | Ambriz Cano Diego Emilio |
 | Presenter | Casillas Juárez Camila |
+
