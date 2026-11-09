@@ -1,4 +1,4 @@
-"""Executes the stages in order: preprocess, scan, and collect tokens, errors, and symbols."""
+"""Ejecuta las etapas en orden: preprocesar, escanear y reunir tokens, errores y símbolos."""
 
 from dataclasses import dataclass
 
@@ -19,7 +19,7 @@ class LexResult:
 
 class LexerController:
     def __init__(self, table: TransitionTable | None = None) -> None:
-        # The table is loaded and reused for each scan.
+        # La tabla se carga una sola vez y se reutiliza en cada ejecución.
         self.table = TransitionTable() if table is None else table
         self.preprocessor = Preprocessor()
 

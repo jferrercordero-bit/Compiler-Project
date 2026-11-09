@@ -1,11 +1,11 @@
-"""Normalizes the input before scanning, without changing lines or columns positions."""
+"""Normaliza la entrada antes de escanear, sin mover líneas ni columnas."""
 
-# Each replacement maps one character to another, so positions do not change.
+# Cada reemplazo es de un carácter por otro, así que las posiciones no cambian.
 _REPLACEMENTS = str.maketrans({
-    "\u201c": '"',  # “ left double quotation mark (may appear when copying text from the PDF)
-    "\u201d": '"',  # ” right double quotation mark
-    "\u2018": "'",  # ‘ left single quotation mark (may appear when copying text from the PDF)
-    "\u2019": "'",  # ’ right single quotation mark
+    "\u201c": '"',  # “ comilla doble de apertura (aparece al copiar del PDF)
+    "\u201d": '"',  # ” comilla doble de cierre
+    "\u2018": "'",  # ‘ comilla simple de apertura
+    "\u2019": "'",  # ’ comilla simple de cierre
 })
 
 

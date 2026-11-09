@@ -1,0 +1,34 @@
+# Parser grammar (Model Designer deliverable, Step 3).
+# Write one production per line. Number productions in order,
+# skipping comments and blank lines.
+# Use ε for an empty production body. The left-hand side of the
+# first production is the start symbol.
+# A symbol is a nonterminal if it appears on the left-hand side
+# of a production. All other symbols in production bodies are terminals.
+Program  -> Stmt StmtList
+StmtList -> Stmt StmtList
+StmtList -> ε
+Stmt     -> Decl
+Stmt     -> Assign
+Decl     -> Type id Decl'
+Decl'    -> ;
+Decl'    -> = Expr ;
+Assign   -> id = Expr ;
+Type     -> int
+Type     -> float
+Type     -> char
+Expr     -> Term Expr'
+Expr'    -> + Term Expr'
+Expr'    -> - Term Expr'
+Expr'    -> ε
+Term     -> Factor Term'
+Term'    -> * Factor Term'
+Term'    -> / Factor Term'
+Term'    -> % Factor Term'
+Term'    -> ε
+Factor   -> ( Expr )
+Factor   -> - Factor
+Factor   -> id
+Factor   -> num
+Factor   -> real
+Factor   -> chr

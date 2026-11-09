@@ -1,4 +1,4 @@
-"""Read input from command line, file or standard input."""
+"""Lee la entrada: una cadena (--text), un archivo (--file) o, si no hay ninguno, la entrada estándar."""
 
 import argparse
 import sys
@@ -9,15 +9,15 @@ class InputReader:
     def __init__(self) -> None:
         self.parser = argparse.ArgumentParser(
             prog="python main.py",
-            description="Lexical analyzer for unam.fi.compilers.g5.06",
+            description="Analizador léxico de unam.fi.compilers.g5.XX",
         )
         source = self.parser.add_mutually_exclusive_group()
-        source.add_argument("--text", help="text to scan")
-        source.add_argument("--file", help="path to the input file")
+        source.add_argument("--text", help="cadena a escanear")
+        source.add_argument("--file", help="ruta del archivo a escanear")
         self.parser.add_argument(
             "--detail",
             action="store_true",
-            help="shows the TokenType, line, and column of each token, as well as the symbol table",
+            help="muestra TokenType, línea y columna de cada token, y la tabla de símbolos",
         )
 
     def read(self, argv: list[str] | None = None) -> tuple[str, argparse.Namespace]:

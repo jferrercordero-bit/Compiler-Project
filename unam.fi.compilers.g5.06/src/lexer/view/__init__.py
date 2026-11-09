@@ -1,1 +1,1 @@
-"""View layer: input and output."""
+"""Capa de vista: entrada y salida."""

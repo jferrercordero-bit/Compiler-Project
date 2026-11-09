@@ -1,4 +1,4 @@
-"""Defines the 18 character classes used as columns in the DFA transition table."""
+"""Las 18 clases de caracteres: las columnas de la tabla de transiciones (sección 5.3)."""
 
 CLASSES = (
     "L", "D", "DOT", "QUOTE", "APOS", "BSLASH", "SLASH", "STAR", "EQ",
@@ -26,11 +26,10 @@ _SINGLE = {
 
 
 def char_class(c: str) -> str:
-    """Returns the transition-table class for character c.
+    """Devuelve la columna de la tabla para el carácter c.
 
-    Explicit ranges are used instead of str.isalpha() because isalpha()
-    also accepts accented letters, which are not valid in identifiers
-    for this language.
+    Se usan rangos explícitos y no str.isalpha(), porque isalpha() también
+    acepta letras con acento, que en este lenguaje no forman identificadores.
     """
     if "a" <= c <= "z" or "A" <= c <= "Z" or c == "_":
         return "L"

@@ -1,1 +1,1 @@
-"""Controller layer: orchestrates the stages."""
+"""Capa de controlador: orquesta las etapas."""

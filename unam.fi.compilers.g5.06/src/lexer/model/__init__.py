@@ -1,1 +1,1 @@
-"""Model layer: automaton, tables, and tokens."""
+"""Capa de modelo: autómata, tablas y tokens."""
